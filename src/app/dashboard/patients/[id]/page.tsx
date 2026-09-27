@@ -45,7 +45,11 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
         .eq("patient_id", patient.id)
         .order("visit_date", { ascending: false })
         .order("visit_number", { ascending: false }),
-      supabase.from("document_types").select("id, name").eq("scope", "PATIENT").eq("active", true),
+      supabase
+        .from("document_types")
+        .select("id, name, requires_signature")
+        .eq("scope", "PATIENT")
+        .eq("active", true),
       supabase
         .from("documents")
         .select("id, file_name, file_type, created_at, document_types(name, sensitive)")

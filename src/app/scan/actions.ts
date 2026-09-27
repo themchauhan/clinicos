@@ -6,6 +6,7 @@ import { resolveScanSession } from "@/lib/scan/resolve-session";
 import { validateFile } from "@/lib/documents/file-validation";
 import { stripExifIfImage } from "@/lib/documents/strip-exif";
 import { logAuditFromServiceRole } from "@/lib/audit/log";
+import { compositeSignatureWithDeclaration } from "@/lib/documents/signature-composite";
 
 // Nothing in this file trusts a Supabase Auth session — there isn't
 // one. The raw token from the QR/link is the only credential; every
@@ -21,6 +22,8 @@ export type ScanSessionInfoResult =
       hospitalName: string;
       patientName: string;
       documentTypeName: string;
+      documentTypeDescription: string | null;
+      requiresSignature: boolean;
       existingPages: { id: string; pageNo: number }[];
     }
   | { error: "invalid" | "expired" | "completed" };
@@ -36,7 +39,11 @@ export async function getScanSessionInfo(rawToken: string): Promise<ScanSessionI
     await Promise.all([
       supabase.from("hospitals").select("name").eq("id", session.hospital_id).single(),
       supabase.from("patients").select("name").eq("id", session.patient_id).single(),
-      supabase.from("document_types").select("name").eq("id", session.document_type_id).single(),
+      supabase
+        .from("document_types")
+        .select("name, description, requires_signature")
+        .eq("id", session.document_type_id)
+        .single(),
       supabase
         .from("documents")
         .select("id, page_no")
@@ -49,6 +56,8 @@ export async function getScanSessionInfo(rawToken: string): Promise<ScanSessionI
     hospitalName: hospital?.name ?? "—",
     patientName: patient?.name ?? "—",
     documentTypeName: documentType?.name ?? "—",
+    documentTypeDescription: documentType?.description ?? null,
+    requiresSignature: documentType?.requires_signature ?? false,
     existingPages: (pages ?? []).map((p) => ({ id: p.id, pageNo: p.page_no ?? 0 })),
   };
 }
@@ -156,6 +165,94 @@ export async function submitScanPage(
     targetId: created.id,
     metadata: { document_type_id: session.document_type_id, via: "phone_scan" },
   });
+
+  return { documentId: created.id };
+}
+
+export async function submitScanSignature(
+  rawToken: string,
+  signatureDataUrl: string,
+): Promise<SubmitScanPageResult> {
+  const supabase = createServiceRoleClient();
+  const session = await resolveScanSession(supabase, rawToken);
+  if (!session) {
+    return { error: "This scan session is no longer active." };
+  }
+
+  const match = /^data:image\/png;base64,(.+)$/.exec(signatureDataUrl);
+  if (!match) {
+    return { error: "Invalid signature data." };
+  }
+  const rawSignature = Buffer.from(match[1], "base64");
+
+  const [{ data: documentType }, { data: patient }] = await Promise.all([
+    supabase
+      .from("document_types")
+      .select("name, description")
+      .eq("id", session.document_type_id)
+      .single(),
+    supabase.from("patients").select("name").eq("id", session.patient_id).single(),
+  ]);
+
+  const compositeBuffer = await compositeSignatureWithDeclaration({
+    signaturePng: rawSignature,
+    documentTypeName: documentType?.name ?? "Signature",
+    declarationText: documentType?.description ?? null,
+    patientName: patient?.name ?? "Patient",
+  });
+
+  const validated = validateFile(compositeBuffer);
+  if ("error" in validated) {
+    return { error: validated.error };
+  }
+
+  const sha256 = createHash("sha256").update(compositeBuffer).digest("hex");
+  const storagePath = `${session.hospital_id}/${session.patient_id}/${randomUUID()}.png`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("documents")
+    .upload(storagePath, compositeBuffer, { contentType: "image/png", upsert: false });
+  if (uploadError) {
+    return { error: "Could not upload the signature. Try again." };
+  }
+
+  const { data: created, error: insertError } = await supabase
+    .from("documents")
+    .insert({
+      hospital_id: session.hospital_id,
+      patient_id: session.patient_id,
+      visit_id: session.visit_id,
+      document_type_id: session.document_type_id,
+      file_name: `signature-${randomUUID()}.png`,
+      file_type: "image/png",
+      storage_path: storagePath,
+      file_size: compositeBuffer.byteLength,
+      sha256,
+      page_no: 1,
+      scan_session_id: session.id,
+      uploaded_by: session.created_by,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !created) {
+    await supabase.storage.from("documents").remove([storagePath]);
+    return { error: "Could not save the signature. Try again." };
+  }
+
+  await logAuditFromServiceRole({
+    hospitalId: session.hospital_id,
+    userId: session.created_by,
+    action: "document.uploaded",
+    targetType: "document",
+    targetId: created.id,
+    metadata: { document_type_id: session.document_type_id, via: "phone_signature" },
+  });
+
+  await supabase
+    .from("scan_sessions")
+    .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+    .eq("id", session.id);
 
   return { documentId: created.id };
 }

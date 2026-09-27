@@ -125,6 +125,7 @@ export async function createDocumentType(
   const scope = String(formData.get("scope") ?? "") as DocumentScope;
   const sensitive = formData.get("sensitive") === "on";
   const pcPndtForm = formData.get("pcPndtForm") === "on";
+  const requiresSignature = formData.get("requiresSignature") === "on";
 
   if (!name) {
     return { error: "Enter a name." };
@@ -155,6 +156,7 @@ export async function createDocumentType(
     scope,
     sensitive,
     pc_pndt_form: pcPndtForm,
+    requires_signature: requiresSignature,
     version: nextVersion,
     effective_from: new Date().toISOString().slice(0, 10),
   });
@@ -193,6 +195,7 @@ export async function updateDocumentType(
   const description = String(formData.get("description") ?? "").trim() || null;
   const sensitive = formData.get("sensitive") === "on";
   const pcPndtForm = formData.get("pcPndtForm") === "on";
+  const requiresSignature = formData.get("requiresSignature") === "on";
   const active = formData.get("active") === "on";
 
   if (!name) {
@@ -208,7 +211,14 @@ export async function updateDocumentType(
   const supabase = await createClient();
   const { error } = await supabase
     .from("document_types")
-    .update({ name, description, sensitive, pc_pndt_form: pcPndtForm, active })
+    .update({
+      name,
+      description,
+      sensitive,
+      pc_pndt_form: pcPndtForm,
+      requires_signature: requiresSignature,
+      active,
+    })
     .eq("id", documentTypeId);
 
   if (error) {

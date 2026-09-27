@@ -85,20 +85,31 @@ export async function logPlatformAdminAudit({
 }
 
 interface LogAuditAsInput extends LogAuditInput {
-  hospitalId: string;
+  // Nullable so a SUPER_ADMIN purge event (permanentlyDeleteHospital)
+  // can log hospital_id: null — audit_logs.hospital_id is ON DELETE
+  // RESTRICT (not cascade), so a real hospital_id here would either
+  // block that hospital's own deletion or get destroyed along with
+  // it, losing the only record the purge happened. null is exactly
+  // what this column's own nullability already exists for (see the
+  // audit_logs migration's "platform-admin action not tied to one
+  // hospital" comment).
+  hospitalId: string | null;
   userId: string;
 }
 
 /**
- * Same as logAudit(), for the one caller that has no session to pull
+ * Same as logAudit(), for callers that have no session to pull
  * hospital_id/user_id from: the Phase 5 phone-camera scan upload
  * (src/app/scan/actions.ts), which authenticates via a validated
- * scan_sessions token instead. hospitalId/userId here come from that
- * already-validated row's own hospital_id/created_by, never from
- * anything the phone itself submits. Inserts via the service-role
- * client (RLS's WITH CHECK can't apply — there's no auth.uid() to
- * check it against), so this is deliberately a narrower exception,
- * not a general-purpose replacement for logAudit().
+ * scan_sessions token instead, and the SUPER_ADMIN hospital/patient
+ * purge actions (src/app/admin/actions.ts), which run under the
+ * service-role client deliberately (crossing tenant RLS on purpose).
+ * hospitalId/userId are always caller-supplied from an
+ * already-validated source, never from anything untrusted. Inserts
+ * via the service-role client (RLS's WITH CHECK can't apply — there's
+ * no auth.uid() to check it against), so this is deliberately a
+ * narrower exception, not a general-purpose replacement for
+ * logAudit().
  */
 export async function logAuditFromServiceRole({
   hospitalId,

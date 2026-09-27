@@ -17,6 +17,7 @@ export interface DocumentTypeDefaults {
   scope?: DocumentScope;
   sensitive?: boolean;
   pcPndtForm?: boolean;
+  requiresSignature?: boolean;
   active?: boolean;
 }
 
@@ -120,6 +121,15 @@ export function DocumentTypeForm({
         <label className="flex items-center gap-2 pb-2 text-sm">
           <input type="checkbox" name="pcPndtForm" defaultChecked={defaults?.pcPndtForm ?? false} />
           PC-PNDT declaration
+        </label>
+
+        <label className="flex items-center gap-2 pb-2 text-sm">
+          <input
+            type="checkbox"
+            name="requiresSignature"
+            defaultChecked={defaults?.requiresSignature ?? false}
+          />
+          Requires signature
         </label>
 
         {documentTypeId ? (

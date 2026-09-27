@@ -327,6 +327,7 @@ export interface Database {
           version: number;
           effective_from: string;
           pc_pndt_form: boolean;
+          requires_signature: boolean;
           created_at: string;
           updated_at: string;
         };

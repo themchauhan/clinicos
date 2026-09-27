@@ -11,6 +11,7 @@ export interface DocumentTypeRow {
   scope: DocumentScope;
   sensitive: boolean;
   pc_pndt_form: boolean;
+  requires_signature: boolean;
   version: number;
   effective_from: string;
   active: boolean;
@@ -40,6 +41,7 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                   scope: dt.scope,
                   sensitive: dt.sensitive,
                   pcPndtForm: dt.pc_pndt_form,
+                  requiresSignature: dt.requires_signature,
                   active: dt.active,
                 }}
                 onSaved={() => setEditingId(null)}
@@ -60,6 +62,11 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                   {dt.pc_pndt_form ? (
                     <span className="ml-1.5 rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-800 dark:bg-violet-950 dark:text-violet-300">
                       PC-PNDT
+                    </span>
+                  ) : null}
+                  {dt.requires_signature ? (
+                    <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                      Signature required
                     </span>
                   ) : null}
                 </p>
@@ -123,6 +130,7 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                       scope: dt.scope,
                       sensitive: dt.sensitive,
                       pcPndtForm: dt.pc_pndt_form,
+                      requiresSignature: dt.requires_signature,
                       active: dt.active,
                     }}
                     onSaved={() => setEditingId(null)}
@@ -143,6 +151,11 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                   {dt.pc_pndt_form ? (
                     <span className="ml-1.5 rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-800 dark:bg-violet-950 dark:text-violet-300">
                       PC-PNDT
+                    </span>
+                  ) : null}
+                  {dt.requires_signature ? (
+                    <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                      Signature required
                     </span>
                   ) : null}
                 </td>

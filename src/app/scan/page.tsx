@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   getScanSessionInfo,
   submitScanPage,
+  submitScanSignature,
   deleteScanPage,
   reorderScanPage,
   finishScanSession,
   type ScanSessionInfoResult,
 } from "@/app/scan/actions";
+import { SignaturePad } from "@/components/scans/signature-pad";
 
 interface Page {
   id: string;
@@ -111,6 +113,19 @@ export default function ScanPage() {
     setBusy(false);
   }
 
+  async function handleSignatureSubmit(dataUrl: string) {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    const result = await submitScanSignature(token, dataUrl);
+    setBusy(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setFinished(true);
+  }
+
   async function handleFinish() {
     if (!token) return;
     setBusy(true);
@@ -144,9 +159,34 @@ export default function ScanPage() {
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-16 sm:px-6">
         <h1 className="text-2xl font-semibold tracking-tight">Done</h1>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          {pages.length} page{pages.length === 1 ? "" : "s"} uploaded for {info.patientName} (
-          {info.documentTypeName}). You can close this tab.
+          {info.requiresSignature
+            ? `Signature captured for ${info.patientName} (${info.documentTypeName}).`
+            : `${pages.length} page${pages.length === 1 ? "" : "s"} uploaded for ${info.patientName} (${info.documentTypeName}).`}{" "}
+          You can close this tab.
         </p>
+      </main>
+    );
+  }
+
+  if (info.requiresSignature) {
+    return (
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-16 sm:px-6">
+        <h1 className="text-2xl font-semibold tracking-tight">{info.documentTypeName}</h1>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          {info.patientName} — {info.hospitalName}
+        </p>
+        <div className="mt-6">
+          <SignaturePad
+            declarationText={info.documentTypeDescription}
+            busy={busy}
+            onSubmit={handleSignatureSubmit}
+          />
+        </div>
+        {error ? (
+          <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        ) : null}
       </main>
     );
   }

@@ -13,6 +13,7 @@ const POLL_INTERVAL_MS = 2500;
 interface DocumentTypeOption {
   id: string;
   name: string;
+  requires_signature: boolean;
 }
 
 export function ScanWithPhoneButton({
@@ -31,7 +32,9 @@ export function ScanWithPhoneButton({
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [sessionRequiresSignature, setSessionRequiresSignature] = useState(false);
   const lastPageCount = useRef(0);
+  const selectedType = documentTypes.find((dt) => dt.id === documentTypeId);
 
   useEffect(() => {
     if (!session || done) return;
@@ -66,13 +69,16 @@ export function ScanWithPhoneButton({
     lastPageCount.current = 0;
     setPageCount(0);
     setDone(false);
+    setSessionRequiresSignature(selectedType?.requires_signature ?? false);
     setSession(result);
   }
 
   if (session && !done) {
     return (
       <div className="flex flex-col items-start gap-3 rounded-md border border-zinc-300 p-4 text-sm dark:border-zinc-700">
-        <p className="font-medium">Scan with phone</p>
+        <p className="font-medium">
+          {sessionRequiresSignature ? "Sign on phone" : "Scan with phone"}
+        </p>
         {/* eslint-disable-next-line @next/next/no-img-element -- qrDataUrl
             is a data: URI generated per-session, not a static asset
             next/image can optimize. */}
@@ -90,9 +96,11 @@ export function ScanWithPhoneButton({
           </a>
         </p>
         <p className="text-zinc-500 dark:text-zinc-400">
-          {pageCount > 0
-            ? `${pageCount} page${pageCount === 1 ? "" : "s"} uploaded so far…`
-            : "Waiting for a page…"}
+          {sessionRequiresSignature
+            ? "Waiting for signature…"
+            : pageCount > 0
+              ? `${pageCount} page${pageCount === 1 ? "" : "s"} uploaded so far…`
+              : "Waiting for a page…"}
         </p>
         <button
           type="button"
@@ -132,7 +140,13 @@ export function ScanWithPhoneButton({
           disabled={starting}
           className="w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
         >
-          {starting ? "Starting…" : done ? "Scan another" : "Scan with phone"}
+          {starting
+            ? "Starting…"
+            : done
+              ? "Scan another"
+              : selectedType?.requires_signature
+                ? "Sign on phone"
+                : "Scan with phone"}
         </button>
       </div>
       {error ? (
@@ -142,7 +156,9 @@ export function ScanWithPhoneButton({
       ) : null}
       {done ? (
         <p className="text-sm text-emerald-700 dark:text-emerald-400">
-          Scan finished — {pageCount} page{pageCount === 1 ? "" : "s"} added.
+          {sessionRequiresSignature
+            ? "Signature captured."
+            : `Scan finished — ${pageCount} page${pageCount === 1 ? "" : "s"} added.`}
         </p>
       ) : null}
     </div>

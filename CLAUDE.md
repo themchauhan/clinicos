@@ -37,6 +37,12 @@ current phase's file plus `phase-0.md`.
 6. **No hard deletes on patient-related data.** Documents, patients,
    and visits are soft-deleted (`deleted_at`) or flagged, never
    `DELETE`d, so retention/legal-hold rules can be layered on later.
+   **Exception:** `permanentlyDeleteHospital` and
+   `permanentlyDeletePatient` in `src/app/admin/actions.ts` —
+   SUPER_ADMIN-only, explicit, type-the-name-to-confirm purges for
+   clearing test data from a real deployment — are the sole sanctioned
+   hard-delete paths, and must stay gated behind
+   `requireRole(profile, ["SUPER_ADMIN"])`.
 7. **No online payment integration.** Patient payments are recorded
    manually by staff (amount + mode + received-by). No payment
    gateway SDKs, no card entry, no UPI deep-link generation.

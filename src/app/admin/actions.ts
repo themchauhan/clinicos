@@ -6,7 +6,7 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { logPlatformAdminAudit } from "@/lib/audit/log";
+import { logPlatformAdminAudit, logAuditFromServiceRole } from "@/lib/audit/log";
 import type { HospitalStatus, ModuleType } from "@/types/database";
 
 export interface CreateHospitalState {
@@ -229,5 +229,224 @@ export async function recordSubscriptionPayment(
 
   revalidatePath("/admin");
   revalidatePath(`/admin/hospitals/${hospitalId}`);
+  return {};
+}
+
+async function wipeStoragePrefix(
+  serviceRole: ReturnType<typeof createServiceRoleClient>,
+  prefix: string,
+): Promise<void> {
+  const bucket = serviceRole.storage.from("documents");
+
+  async function listAll(path: string) {
+    const out: { name: string; id: string | null }[] = [];
+    let offset = 0;
+    const limit = 1000;
+    for (;;) {
+      const { data, error } = await bucket.list(path, { limit, offset });
+      if (error) throw error;
+      out.push(...(data ?? []));
+      if (!data || data.length < limit) break;
+      offset += limit;
+    }
+    return out;
+  }
+
+  const topLevel = await listAll(prefix);
+  const filePaths: string[] = [];
+  for (const entry of topLevel) {
+    const entryPath = `${prefix}/${entry.name}`;
+    if (entry.id === null) {
+      // A folder placeholder (e.g. a patient_id directory under a
+      // hospital-level wipe) -- list one level deeper for the actual
+      // files. Storage never nests more than hospital_id/patient_id/
+      // file, so a single extra level is always enough here.
+      const nested = await listAll(entryPath);
+      filePaths.push(...nested.map((f) => `${entryPath}/${f.name}`));
+    } else {
+      filePaths.push(entryPath);
+    }
+  }
+
+  for (let i = 0; i < filePaths.length; i += 100) {
+    const chunk = filePaths.slice(i, i + 100);
+    const { error } = await bucket.remove(chunk);
+    if (error) throw error;
+  }
+}
+
+const HOSPITAL_PURGE_DELETE_ORDER = [
+  "documents",
+  "visit_payments",
+  "scan_sessions",
+  "subscription_payments",
+  "audit_logs",
+  "visits",
+  "doctors",
+  "document_types",
+  "visit_types",
+  "patients",
+  "profiles",
+] as const;
+
+/**
+ * SUPER_ADMIN-only, explicit exception to CLAUDE.md hard rule #6 (see
+ * that rule's own carve-out sentence) -- for purging an entire test
+ * centre from a real deployment, not for anything a hospital's own
+ * staff can reach. Deletion order below is required: almost every
+ * hospital_id FK in this schema is ON DELETE RESTRICT, not CASCADE
+ * (verified against every migration), so children must go before
+ * parents. hospital_modules/patient_code_counters/visit_counters
+ * cascade off the final hospitals delete; visit_document_requirements/
+ * visit_type_document_requirements cascade off visits/document_types/
+ * visit_types deleted in this same loop.
+ */
+export async function permanentlyDeleteHospital(hospitalId: string): Promise<{ error?: string }> {
+  const profile = requireRole(await getSessionProfile(), ["SUPER_ADMIN"]);
+  const serviceRole = createServiceRoleClient();
+
+  const { data: hospital } = await serviceRole
+    .from("hospitals")
+    .select("id, name")
+    .eq("id", hospitalId)
+    .single();
+  if (!hospital) {
+    return { error: "Centre not found." };
+  }
+
+  // Logged first, hospital_id: null, before any deletes below can
+  // fail partway and leave no record of the attempt. A real
+  // hospital_id here would either block or be destroyed by this same
+  // purge, since audit_logs.hospital_id is ON DELETE RESTRICT.
+  await logAuditFromServiceRole({
+    hospitalId: null,
+    userId: profile.userId,
+    action: "hospital.permanently_deleted",
+    targetType: "hospital",
+    targetId: hospitalId,
+    metadata: { hospitalName: hospital.name },
+  });
+
+  // Storage first: Postgres FK cascades never touch Storage objects.
+  await wipeStoragePrefix(serviceRole, hospitalId);
+
+  const { data: profileRows } = await serviceRole
+    .from("profiles")
+    .select("id")
+    .eq("hospital_id", hospitalId);
+  const profileIds = (profileRows ?? []).map((p) => p.id);
+
+  for (const table of HOSPITAL_PURGE_DELETE_ORDER) {
+    const { error } = await serviceRole.from(table).delete().eq("hospital_id", hospitalId);
+    if (error) {
+      return { error: `Purge failed while deleting ${table}: ${error.message}` };
+    }
+  }
+
+  // profiles rows for this hospital are already gone (loop above) --
+  // deleteUser()'s own auth.users -> profiles cascade has nothing
+  // left to cascade, so this purely revokes login credentials. A
+  // failure here is logged, not fatal: the Postgres-side purge (the
+  // actual data-retention concern) has already succeeded by this
+  // point, and a stray auth.users row with no profile can't sign in
+  // to anything anyway.
+  for (const id of profileIds) {
+    const { error } = await serviceRole.auth.admin.deleteUser(id);
+    if (error) {
+      console.error("permanentlyDeleteHospital: deleteUser failed", id, error.message);
+    }
+  }
+
+  // Finally, the hospital row itself -- cascades hospital_modules,
+  // patient_code_counters, visit_counters.
+  const { error: hospitalDeleteError } = await serviceRole
+    .from("hospitals")
+    .delete()
+    .eq("id", hospitalId);
+  if (hospitalDeleteError) {
+    return {
+      error: `Purge completed data deletion, but the hospital row itself failed to delete: ${hospitalDeleteError.message}`,
+    };
+  }
+
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+/**
+ * Same exception as permanentlyDeleteHospital, narrower scope: deletes
+ * one test patient and only their own visits/documents/scan-sessions,
+ * leaving the hospital and everything else in it untouched. No
+ * auth.users involved -- patients aren't staff accounts.
+ */
+export async function permanentlyDeletePatient(patientId: string): Promise<{ error?: string }> {
+  requireRole(await getSessionProfile(), ["SUPER_ADMIN"]);
+  const serviceRole = createServiceRoleClient();
+
+  const { data: patient } = await serviceRole
+    .from("patients")
+    .select("id, hospital_id, name")
+    .eq("id", patientId)
+    .single();
+  if (!patient) {
+    return { error: "Patient not found." };
+  }
+
+  await logPlatformAdminAudit({
+    targetHospitalId: patient.hospital_id,
+    action: "patient.permanently_deleted",
+    targetType: "patient",
+    targetId: patientId,
+    metadata: { patientName: patient.name },
+  });
+
+  await wipeStoragePrefix(serviceRole, `${patient.hospital_id}/${patientId}`);
+
+  const { data: patientVisits } = await serviceRole
+    .from("visits")
+    .select("id")
+    .eq("patient_id", patientId);
+  const visitIds = (patientVisits ?? []).map((v) => v.id);
+
+  const { error: documentsError } = await serviceRole
+    .from("documents")
+    .delete()
+    .eq("patient_id", patientId);
+  if (documentsError) {
+    return { error: `Could not delete documents: ${documentsError.message}` };
+  }
+
+  if (visitIds.length > 0) {
+    const { error: paymentsError } = await serviceRole
+      .from("visit_payments")
+      .delete()
+      .in("visit_id", visitIds);
+    if (paymentsError) {
+      return { error: `Could not delete visit payments: ${paymentsError.message}` };
+    }
+  }
+
+  const { error: scanSessionsError } = await serviceRole
+    .from("scan_sessions")
+    .delete()
+    .eq("patient_id", patientId);
+  if (scanSessionsError) {
+    return { error: `Could not delete scan sessions: ${scanSessionsError.message}` };
+  }
+
+  const { error: visitsError } = await serviceRole
+    .from("visits")
+    .delete()
+    .eq("patient_id", patientId);
+  if (visitsError) {
+    return { error: `Could not delete visits: ${visitsError.message}` };
+  }
+
+  const { error: patientError } = await serviceRole.from("patients").delete().eq("id", patientId);
+  if (patientError) {
+    return { error: `Could not delete the patient: ${patientError.message}` };
+  }
+
+  revalidatePath(`/admin/hospitals/${patient.hospital_id}/patients`);
   return {};
 }

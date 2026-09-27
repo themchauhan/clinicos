@@ -44,7 +44,11 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
         .from("visit_document_requirements")
         .select("id, document_type_id, document_type_name, required")
         .eq("visit_id", visit.id),
-      supabase.from("document_types").select("id, name").eq("scope", "VISIT").eq("active", true),
+      supabase
+        .from("document_types")
+        .select("id, name, requires_signature")
+        .eq("scope", "VISIT")
+        .eq("active", true),
       supabase
         .from("documents")
         .select(

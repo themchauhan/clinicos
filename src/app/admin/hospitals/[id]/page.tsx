@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole } from "@/lib/auth/guards";
@@ -6,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { HospitalStatusForm } from "@/components/admin/hospital-status-form";
 import { HospitalPlanForm } from "@/components/admin/hospital-plan-form";
 import { RecordPaymentForm } from "@/components/admin/record-payment-form";
+import { DeleteHospitalForm } from "@/components/admin/delete-hospital-form";
 import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Centre — ClinicOS" };
@@ -43,6 +45,12 @@ export default async function HospitalDetailPage({ params }: { params: Promise<{
       <p className="mt-1 text-sm text-slate-600">
         Modules: {hospital.hospital_modules.map((m) => m.module).join(", ") || "—"}
       </p>
+      <Link
+        href={`/admin/hospitals/${hospital.id}/patients`}
+        className="mt-2 w-fit text-sm text-teal-700 hover:underline"
+      >
+        View patients →
+      </Link>
 
       <dl className="mt-8 grid max-w-lg grid-cols-[auto_1fr] gap-x-6 gap-y-4 text-sm">
         <dt className="pt-2 text-slate-500">Status</dt>
@@ -151,6 +159,13 @@ export default async function HospitalDetailPage({ params }: { params: Promise<{
         ) : (
           <p className="mt-4 text-sm text-slate-500">No payments recorded yet.</p>
         )}
+      </div>
+
+      <div className="mt-6 rounded-xl border border-red-300 bg-red-50 p-6 shadow-sm sm:p-8">
+        <h2 className="text-lg font-semibold text-red-900">Danger zone</h2>
+        <div className="mt-4">
+          <DeleteHospitalForm hospitalId={hospital.id} hospitalName={hospital.name} />
+        </div>
       </div>
     </main>
   );
