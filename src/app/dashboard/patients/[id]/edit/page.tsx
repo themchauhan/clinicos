@@ -5,7 +5,7 @@ import { updatePatient } from "@/app/dashboard/patients/actions";
 import { PatientForm } from "@/components/patients/patient-form";
 import { BackLink } from "@/components/back-link";
 
-export const metadata: Metadata = { title: "Edit patient — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Edit patient — ClinicOS" };
 
 export default async function EditPatientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

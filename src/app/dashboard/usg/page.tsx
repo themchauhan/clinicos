@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentMode } from "@/types/database";
 
-export const metadata: Metadata = { title: "USG dashboard — Hospital & USG Records" };
+export const metadata: Metadata = { title: "USG dashboard — ClinicOS" };
 
 type Column = "waiting" | "documentsPending" | "inProgress" | "completed";
 

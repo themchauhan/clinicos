@@ -3,7 +3,7 @@ import { PatientForm } from "@/components/patients/patient-form";
 import { createPatient } from "@/app/dashboard/patients/actions";
 import { BackLink } from "@/components/back-link";
 
-export const metadata: Metadata = { title: "New patient — Hospital & USG Records" };
+export const metadata: Metadata = { title: "New patient — ClinicOS" };
 
 export default function NewPatientPage() {
   return (

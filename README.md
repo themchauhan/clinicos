@@ -1,4 +1,4 @@
-# Hospital & USG Management SaaS
+# ClinicOS
 
 A multi-tenant web app for small Indian hospitals and diagnostic (USG)
 centres — capture patient details and documents once, reuse them on
@@ -38,7 +38,7 @@ required.
 
 ```bash
 git clone <repo-url>
-cd hospital-management
+cd clinicos
 npm install
 cp .env.example .env.local
 npx supabase start

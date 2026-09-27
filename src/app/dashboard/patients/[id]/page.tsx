@@ -8,7 +8,7 @@ import { DocumentList } from "@/components/documents/document-list";
 import { ScanWithPhoneButton } from "@/components/scans/scan-with-phone-button";
 import { BackLink } from "@/components/back-link";
 
-export const metadata: Metadata = { title: "Patient — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Patient — ClinicOS" };
 
 function formatDob(dob: string | null, approximateAgeYears: number | null): string {
   if (dob) {

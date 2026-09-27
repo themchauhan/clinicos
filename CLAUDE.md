@@ -1,4 +1,4 @@
-# Hospital & USG Management SaaS — Claude Code project rules
+# ClinicOS — Claude Code project rules
 
 This file is read by Claude Code at the start of every session in this
 project. Follow it over any conflicting instinct.

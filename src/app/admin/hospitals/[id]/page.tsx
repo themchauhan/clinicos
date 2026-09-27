@@ -8,7 +8,7 @@ import { HospitalPlanForm } from "@/components/admin/hospital-plan-form";
 import { RecordPaymentForm } from "@/components/admin/record-payment-form";
 import { BackLink } from "@/components/back-link";
 
-export const metadata: Metadata = { title: "Centre — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Centre — ClinicOS" };
 
 export default async function HospitalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

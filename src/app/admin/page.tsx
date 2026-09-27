@@ -7,7 +7,7 @@ import { getMfaStatus } from "@/lib/auth/mfa";
 import { createClient } from "@/lib/supabase/server";
 import type { HospitalStatus } from "@/types/database";
 
-export const metadata: Metadata = { title: "Platform admin — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Platform admin — ClinicOS" };
 
 const STATUS_ORDER: HospitalStatus[] = ["TRIAL", "ACTIVE", "SUSPENDED", "EXPIRED"];
 

@@ -1,4 +1,4 @@
-# Hospital & USG Digital Records SaaS — Product Brief
+# ClinicOS — Product Brief
 
 _Revised AI coding brief — MVP phases & acceptance criteria_
 

@@ -6,7 +6,7 @@ describe("NavShell", () => {
   it("renders the product name and primary nav links", () => {
     render(<NavShell />);
 
-    expect(screen.getByText("Hospital & USG Records")).toBeInTheDocument();
+    expect(screen.getByText("ClinicOS")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
     expect(screen.getByRole("link", { name: "Patients" })).toHaveAttribute(
       "href",

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
-export const metadata: Metadata = { title: "Reset password — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Reset password — ClinicOS" };
 
 export default function ForgotPasswordPage() {
   return (

@@ -11,7 +11,7 @@ import { DocumentTypeForm } from "@/components/settings/document-type-form";
 import { RequirementsMatrix } from "@/components/settings/requirements-matrix";
 import type { ModuleType } from "@/types/database";
 
-export const metadata: Metadata = { title: "Settings — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Settings — ClinicOS" };
 
 const ALL_MODULES: { module: ModuleType; label: string }[] = [
   { module: "GENERAL_OPD", label: "General OPD" },

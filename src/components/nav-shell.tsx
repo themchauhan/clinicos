@@ -46,7 +46,7 @@ export function NavShell({
 
   return (
     <header className="relative border-b border-slate-200 bg-white print:hidden">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
+      <div className="relative z-50 mx-auto flex max-w-5xl items-center justify-between bg-white px-4 py-3 sm:px-6">
         <Link
           href="/"
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
@@ -55,7 +55,7 @@ export function NavShell({
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-teal-600 text-xs font-bold text-white">
             +
           </span>
-          <span className="whitespace-nowrap">Hospital &amp; USG Records</span>
+          <span className="whitespace-nowrap">ClinicOS</span>
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 sm:flex">
@@ -140,7 +140,7 @@ export function NavShell({
             onClick={() => setMenuOpen(false)}
             className="fixed inset-0 z-40 bg-slate-900/30 sm:hidden"
           />
-          <div className="absolute inset-x-0 top-full z-50 border-t border-slate-200 bg-white px-4 pb-4 shadow-lg sm:hidden">
+          <div className="animate-slide-down absolute inset-x-0 top-full z-50 border-t border-slate-200 bg-white px-4 pb-4 shadow-lg sm:hidden">
             <nav aria-label="Primary" className="flex flex-col">
               {NAV_LINKS.map((link) => (
                 <Link

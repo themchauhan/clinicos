@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hospital & USG Records",
+  title: "ClinicOS",
   description: "Digital patient records for small hospitals and USG centres.",
 };
 

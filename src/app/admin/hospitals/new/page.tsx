@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { CreateHospitalForm } from "@/components/admin/create-hospital-form";
 import { BackLink } from "@/components/back-link";
 
-export const metadata: Metadata = { title: "Create centre — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Create centre — ClinicOS" };
 
 export default async function NewHospitalPage() {
   const profile = await getSessionProfile();

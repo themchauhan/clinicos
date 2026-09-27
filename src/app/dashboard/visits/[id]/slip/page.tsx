@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/auth/session";
 import { PrintButton } from "@/components/visits/print-button";
 
-export const metadata: Metadata = { title: "Slip — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Slip — ClinicOS" };
 
 /**
  * Printable OPD slip: centre header, patient name/code, date, doctor,

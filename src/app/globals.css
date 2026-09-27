@@ -28,6 +28,24 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* Entrance animation for the mobile nav menu overlay (nav-shell.tsx) —
+   it mounts/unmounts on toggle, so a plain CSS animation re-triggers
+   correctly every time it opens without needing JS transition state. */
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 180ms ease-out;
+}
+
 /* Printable pages (e.g. the OPD slip) should always print on a plain
    white background with black text, regardless of the OS's dark mode
    preference — dark:* Tailwind classes elsewhere are otherwise still

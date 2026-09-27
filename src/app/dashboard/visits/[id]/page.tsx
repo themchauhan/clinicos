@@ -13,7 +13,7 @@ import { ScanWithPhoneButton } from "@/components/scans/scan-with-phone-button";
 import { StatusTransitionButtons } from "@/components/visits/status-transition-buttons";
 import { BackLink } from "@/components/back-link";
 
-export const metadata: Metadata = { title: "Visit — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Visit — ClinicOS" };
 
 const STATUS_LABELS = { UNPAID: "Unpaid", PARTIAL: "Partially paid", PAID: "Paid" } as const;
 

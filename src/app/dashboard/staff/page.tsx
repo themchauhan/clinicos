@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { InviteStaffForm } from "@/components/staff/invite-staff-form";
 import { StaffList } from "@/components/staff/staff-list";
 
-export const metadata: Metadata = { title: "Staff — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Staff — ClinicOS" };
 
 export default async function StaffPage() {
   // dashboard/layout.tsx already confirmed a signed-in, MFA-satisfied

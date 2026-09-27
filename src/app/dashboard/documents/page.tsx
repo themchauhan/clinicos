@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Pending documents — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Pending documents — ClinicOS" };
 
 /**
  * Every visit missing a required document shows up here — the safety

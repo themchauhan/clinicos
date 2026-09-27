@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "hospital-management"
+project_id = "clinicos"
 
 [api]
 enabled = true
@@ -250,7 +250,7 @@ otp_expiry = 3600
 # Staff invite link. Same token_hash + /auth/confirm pattern as the
 # recovery template above, for the same reason.
 [auth.email.template.invite]
-subject = "You've been invited to Hospital & USG Records"
+subject = "You've been invited to ClinicOS"
 content_path = "./supabase/templates/invite.html"
 
 # Password reset link. Uses {{ .TokenHash }} (not the default

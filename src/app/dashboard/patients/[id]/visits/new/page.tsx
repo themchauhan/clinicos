@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NewVisitForm } from "@/components/visits/new-visit-form";
 import { BackLink } from "@/components/back-link";
 
-export const metadata: Metadata = { title: "New visit — Hospital & USG Records" };
+export const metadata: Metadata = { title: "New visit — ClinicOS" };
 
 export default async function NewVisitPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: patientId } = await params;

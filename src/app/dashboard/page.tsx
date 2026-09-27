@@ -4,7 +4,7 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { ModuleType } from "@/types/database";
 
-export const metadata: Metadata = { title: "Dashboard — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Dashboard — ClinicOS" };
 
 const MODULE_LABELS: Record<ModuleType, string> = { GENERAL_OPD: "General OPD", USG: "USG" };
 

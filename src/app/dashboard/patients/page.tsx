@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PatientRow } from "@/components/patients/patient-row";
 
-export const metadata: Metadata = { title: "Patients — Hospital & USG Records" };
+export const metadata: Metadata = { title: "Patients — ClinicOS" };
 
 export default async function PatientsPage({
   searchParams,
