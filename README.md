@@ -74,12 +74,13 @@ list — all share the password `demo-password-123!`):
 | `admin@wellspring.test`    | HOSPITAL_ADMIN             | Wellspring Multispecialty (both modules) |
 | `deactivated@sunrise.test` | RECEPTIONIST (deactivated) | Sunrise General Hospital                 |
 
-SUPER_ADMIN accounts require two-factor authentication (Phase 1c) —
-the first sign-in prompts MFA enrollment (scan the QR with any TOTP
-authenticator app). HOSPITAL_ADMIN and RECEPTIONIST accounts don't
-require it at the pilot stage, to keep onboarding simple before
-there's a real client — see `src/lib/auth/mfa.ts` to re-enable it for
-HOSPITAL_ADMIN once one needs it.
+Two-factor authentication (Phase 1c) is opt-in, not mandatory, for
+SUPER_ADMIN and HOSPITAL_ADMIN accounts — enable it yourself from
+"Security" in the nav (`/account/security`), which walks you through
+scanning a QR with any TOTP authenticator app. Once enabled, that
+account is challenged for a code every session from then on; disable
+it again from the same page. See `src/lib/auth/mfa.ts` for how this is
+derived purely from Supabase's own MFA factor state.
 
 Never commit `.env.local` or paste real Supabase secrets into a
 prompt — see `CLAUDE.md` hard rule #5 on dummy data only.

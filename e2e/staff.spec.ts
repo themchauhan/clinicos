@@ -9,8 +9,8 @@ test("a hospital admin invites staff and can deactivate/reactivate them", async 
   await page.getByLabel("Password").fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // HOSPITAL_ADMIN doesn't require MFA at the pilot stage (see
-  // src/lib/auth/mfa.ts), so sign-in goes straight to the dashboard.
+  // MFA is opt-in (see src/lib/auth/mfa.ts) and this seeded account
+  // hasn't enrolled a factor, so sign-in goes straight to the dashboard.
   await expect(page).toHaveURL(/\/dashboard$/);
 
   await page.getByRole("link", { name: "Manage staff →" }).click();

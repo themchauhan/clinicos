@@ -33,8 +33,11 @@ test("upload a patient-level document, view it, and see it fulfil a visit requir
   await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
 
-  await expect(page.getByText("id-proof.jpg")).toBeVisible();
-  await expect(page.getByText("Sensitive")).toBeVisible();
+  // The document list renders a mobile card (first in the DOM, hidden
+  // via CSS at this test's desktop viewport) and a desktop table row
+  // for the same document -- .last() lands on the visible one.
+  await expect(page.getByText("id-proof.jpg").last()).toBeVisible();
+  await expect(page.getByText("Sensitive").last()).toBeVisible();
 
   // Viewing a sensitive document logs exactly one audit_logs row.
   const documentId = await findDocumentId(patientId, "id-proof.jpg");

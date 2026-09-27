@@ -29,10 +29,9 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
   }
   requireRole(profile, ["HOSPITAL_ADMIN", "RECEPTIONIST"]);
 
+  // enroll_required never applies here -- HOSPITAL_ADMIN/RECEPTIONIST
+  // aren't in mfa.ts's mandatory-role list, only SUPER_ADMIN is.
   const mfaStatus = await getMfaStatus(profile.role);
-  if (mfaStatus === "enroll_required") {
-    redirect(`/mfa/setup?next=${encodeURIComponent(requestedPath)}`);
-  }
   if (mfaStatus === "challenge_required") {
     redirect(`/mfa/verify?next=${encodeURIComponent(requestedPath)}`);
   }

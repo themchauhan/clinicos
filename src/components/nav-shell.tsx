@@ -10,7 +10,16 @@ const NAV_LINKS = [
   { href: "/dashboard/visits", label: "Visits" },
   { href: "/dashboard/usg", label: "USG", requiresModule: "USG" as ModuleType },
   { href: "/dashboard/documents", label: "Documents" },
-  { href: "/dashboard/settings", label: "Settings", requiresRole: "HOSPITAL_ADMIN" as StaffRole },
+  {
+    href: "/dashboard/settings",
+    label: "Settings",
+    requiresRole: ["HOSPITAL_ADMIN"] as readonly StaffRole[],
+  },
+  {
+    href: "/account/security",
+    label: "Security",
+    requiresRole: ["SUPER_ADMIN", "HOSPITAL_ADMIN"] as readonly StaffRole[],
+  },
 ] as const;
 
 /**
@@ -23,7 +32,7 @@ const NAV_LINKS = [
 function visibleLinks(session: NavShellSession | null | undefined) {
   return NAV_LINKS.filter((link) => {
     if (!session) return true;
-    if ("requiresRole" in link && session.role !== link.requiresRole) return false;
+    if ("requiresRole" in link && !link.requiresRole.includes(session.role)) return false;
     if ("requiresModule" in link && !session.enabledModules.includes(link.requiresModule)) {
       return false;
     }

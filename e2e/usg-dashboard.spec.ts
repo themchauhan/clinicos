@@ -12,8 +12,8 @@ test.beforeAll(async () => {
   await cleanupTestPatients("E2E USG Test Patient");
 });
 
-// HOSPITAL_ADMIN doesn't require MFA at the pilot stage (see
-// src/lib/auth/mfa.ts), so this is a plain login.
+// MFA is opt-in (see src/lib/auth/mfa.ts) and these seeded accounts
+// haven't enrolled a factor, so this is a plain login.
 async function login(page: import("@playwright/test").Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
@@ -36,7 +36,10 @@ test("a pregnancy/obstetric USG visit moves through the dashboard columns as its
   await page.getByLabel("Document type", { exact: true }).selectOption({ label: "ID Proof" });
   await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
-  await expect(page.getByText("id-proof.jpg").first()).toBeVisible();
+  // The document list renders a mobile card (first in the DOM, hidden
+  // via CSS at this test's desktop viewport) and a desktop table row
+  // for the same document -- .last() lands on the visible one.
+  await expect(page.getByText("id-proof.jpg").last()).toBeVisible();
 
   await page.getByRole("link", { name: "New visit" }).click();
   await page.getByLabel("Visit type").selectOption({ label: "Pregnancy/Obstetric USG" });

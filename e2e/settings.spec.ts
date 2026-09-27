@@ -17,8 +17,8 @@ test("editing a visit type's document requirements changes the checklist for new
   await page.getByLabel("Password").fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // HOSPITAL_ADMIN doesn't require MFA at the pilot stage (see
-  // src/lib/auth/mfa.ts), so sign-in goes straight to the dashboard.
+  // MFA is opt-in (see src/lib/auth/mfa.ts) and this seeded account
+  // hasn't enrolled a factor, so sign-in goes straight to the dashboard.
   await expect(page).toHaveURL(/\/dashboard$/);
 
   await page.getByRole("link", { name: "Settings", exact: true }).click();
@@ -29,9 +29,11 @@ test("editing a visit type's document requirements changes the checklist for new
   await page.getByLabel("Document type name").fill(docTypeName);
   await page.getByLabel("Scope").selectOption("VISIT");
   await page.getByRole("button", { name: "Add document type" }).click();
-  // Shows up in both the document-type list and the requirements
-  // matrix's row header — just confirm at least one is visible.
-  await expect(page.getByText(docTypeName).first()).toBeVisible();
+  // Shows up in the document-type list's mobile card (first in the
+  // DOM, hidden via CSS at this test's desktop viewport), its desktop
+  // table row, and the requirements matrix's row header -- .last()
+  // lands on a row that's actually visible here.
+  await expect(page.getByText(docTypeName).last()).toBeVisible();
 
   // Mark it required for OPD Consultation (one click: none -> required).
   // The cell's accessible name is "<visit type>: <state>" so it's

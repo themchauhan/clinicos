@@ -1,15 +1,14 @@
 import { test, expect } from "@playwright/test";
-import { generateTotp } from "./utils/totp";
-import { resetMfaFactors } from "./utils/reset-mfa";
 
 // Credentials from scripts/seed.ts. Run `npx supabase start && npm run
 // db:seed` before this spec — see README.md.
 const DEMO_PASSWORD = "demo-password-123!";
-// RECEPTIONIST doesn't require MFA (Phase 1c), so it's the simplest
-// account for tests that are about login/session mechanics rather
-// than MFA itself — see mfa.spec.ts for the MFA-specific flows.
+// MFA is mandatory for SUPER_ADMIN and opt-in for every other role
+// (see src/lib/auth/mfa.ts) -- RECEPTIONIST never enrolls, so it's the
+// simplest account for tests that are about session mechanics rather
+// than MFA itself. See mfa.spec.ts for the SUPER_ADMIN mandatory and
+// HOSPITAL_ADMIN opt-in enroll/verify/disable flows.
 const TENANT_EMAIL = "reception@sunrise.test";
-const PLATFORM_ADMIN_EMAIL = "super@platform.test";
 
 async function login(page: import("@playwright/test").Page, email: string) {
   await page.goto("/login");
@@ -23,25 +22,6 @@ test("a tenant user logs in and lands on /dashboard", async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
   await expect(page.getByText(TENANT_EMAIL)).toBeVisible();
-});
-
-test("a platform admin logs in, completes MFA enrollment, and lands on /admin", async ({
-  page,
-}) => {
-  // Guarantee the enroll path regardless of a previous e2e run having
-  // already enrolled this account (local Supabase data persists
-  // across `npm run e2e` runs).
-  await resetMfaFactors(PLATFORM_ADMIN_EMAIL);
-  await login(page, PLATFORM_ADMIN_EMAIL);
-
-  // SUPER_ADMIN requires MFA (Phase 1c).
-  await expect(page).toHaveURL(/\/mfa\/setup/);
-  const secret = (await page.locator("code").textContent())?.trim();
-  await page.getByLabel("6-digit code").fill(generateTotp(secret!));
-  await page.getByRole("button", { name: "Confirm" }).click();
-
-  await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Super admin console" })).toBeVisible();
 });
 
 test("an incorrect password shows an error and does not navigate", async ({ page }) => {

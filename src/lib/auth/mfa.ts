@@ -3,24 +3,20 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { StaffRole } from "@/types/database";
 
-const MFA_REQUIRED_ROLES: readonly StaffRole[] = ["SUPER_ADMIN"];
+const MFA_MANDATORY_ROLES: readonly StaffRole[] = ["SUPER_ADMIN"];
 
 export type MfaStatus = "not_required" | "enroll_required" | "challenge_required" | "satisfied";
 
 /**
- * MFA is mandatory only for SUPER_ADMIN (platform admin) for now.
- * HOSPITAL_ADMIN was dropped from this list at the pilot stage to
- * keep onboarding simple before there's a real client; re-add it here
- * once a hospital actually needs it. "Required" means enforced on
- * next login — a role that requires it but hasn't enrolled a factor
- * yet must do so before reaching any protected page; one that has
- * must complete a challenge each session before reaching aal2.
+ * MFA is mandatory for SUPER_ADMIN (platform admin) by default -- a
+ * fresh SUPER_ADMIN login with no verified factor is forced through
+ * enrollment. For every other role it's opt-in: a HOSPITAL_ADMIN can
+ * turn it on for their own account from /account/security, and once a
+ * verified factor exists (for ANY role) it's enforced every session
+ * from then on, since that part purely reflects Supabase's own AAL
+ * state rather than a role check.
  */
 export async function getMfaStatus(role: StaffRole): Promise<MfaStatus> {
-  if (!MFA_REQUIRED_ROLES.includes(role)) {
-    return "not_required";
-  }
-
   const supabase = await createClient();
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (error || !data) {
@@ -35,5 +31,6 @@ export async function getMfaStatus(role: StaffRole): Promise<MfaStatus> {
     // the challenge yet.
     return "challenge_required";
   }
-  return "enroll_required";
+  // No verified factor exists yet.
+  return MFA_MANDATORY_ROLES.includes(role) ? "enroll_required" : "not_required";
 }

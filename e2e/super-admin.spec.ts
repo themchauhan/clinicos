@@ -1,23 +1,29 @@
 import { test, expect } from "@playwright/test";
-import { generateTotp } from "./utils/totp";
 import { resetMfaFactors } from "./utils/reset-mfa";
+import { completeMfaEnrollment } from "./utils/mfa-flow";
 
 const DEMO_PASSWORD = "demo-password-123!";
 const PLATFORM_ADMIN_EMAIL = "super@platform.test";
 
+test.afterAll(async () => {
+  await resetMfaFactors(PLATFORM_ADMIN_EMAIL);
+});
+
 test("a platform admin creates a centre, manages its status/plan, and records a payment", async ({
   page,
 }) => {
+  // MFA is mandatory for SUPER_ADMIN (see src/lib/auth/mfa.ts and
+  // mfa.spec.ts, which covers the enroll/verify/disable flows in
+  // detail) -- reset first so this account deterministically hits the
+  // enroll form regardless of what a previous e2e run left behind,
+  // then complete it once so the rest of this test can proceed as a
+  // normal aal2 session.
   await resetMfaFactors(PLATFORM_ADMIN_EMAIL);
   await page.goto("/login");
   await page.getByLabel("Email").fill(PLATFORM_ADMIN_EMAIL);
   await page.getByLabel("Password").fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-
-  await expect(page).toHaveURL(/\/mfa\/setup/);
-  const secret = (await page.locator("code").textContent())?.trim();
-  await page.getByLabel("6-digit code").fill(generateTotp(secret!));
-  await page.getByRole("button", { name: "Confirm" }).click();
+  await completeMfaEnrollment(page);
   await expect(page).toHaveURL(/\/admin$/);
 
   await page.getByRole("link", { name: "Create centre" }).click();
@@ -65,6 +71,9 @@ test("a platform admin creates a centre, manages its status/plan, and records a 
   await page.getByLabel("Period end").fill("2026-02-01");
   await page.getByRole("button", { name: "Record payment" }).click();
 
-  await expect(page.getByText("TESTREF123")).toBeVisible();
+  // Payment history renders a mobile card (first in the DOM, hidden
+  // via CSS at this test's desktop viewport) and a desktop table row
+  // for the same payment -- .last() lands on the visible one.
+  await expect(page.getByText("TESTREF123").last()).toBeVisible();
   await expect(page.locator("select")).toHaveValue("ACTIVE");
 });

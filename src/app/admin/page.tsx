@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole } from "@/lib/auth/guards";
-import { getMfaStatus } from "@/lib/auth/mfa";
 import { createClient } from "@/lib/supabase/server";
 import type { HospitalStatus } from "@/types/database";
 
@@ -19,24 +17,10 @@ const STATUS_STYLES: Record<HospitalStatus, string> = {
 };
 
 export default async function AdminPage() {
-  const profile = await getSessionProfile();
-
-  if (!profile) {
-    redirect("/login?next=/admin");
-  }
-  if (!profile.isPlatformAdmin) {
-    redirect("/dashboard");
-  }
-
-  requireRole(profile, ["SUPER_ADMIN"]);
-
-  const mfaStatus = await getMfaStatus(profile.role);
-  if (mfaStatus === "enroll_required") {
-    redirect("/mfa/setup?next=/admin");
-  }
-  if (mfaStatus === "challenge_required") {
-    redirect("/mfa/verify?next=/admin");
-  }
+  // Session/platform-admin/MFA gating is handled by admin/layout.tsx;
+  // this call stays as defensive redundancy, same convention
+  // dashboard/staff uses on top of dashboard/layout.tsx.
+  requireRole(await getSessionProfile(), ["SUPER_ADMIN"]);
 
   const supabase = await createClient();
   const { data: hospitals } = await supabase

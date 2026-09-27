@@ -61,8 +61,8 @@ test("only a HOSPITAL_ADMIN can record a reversal", async ({ page }) => {
   await page.getByLabel("Password").fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // HOSPITAL_ADMIN doesn't require MFA at the pilot stage (see
-  // src/lib/auth/mfa.ts), so sign-in goes straight to the dashboard.
+  // MFA is opt-in (see src/lib/auth/mfa.ts) and this seeded account
+  // hasn't enrolled a factor, so sign-in goes straight to the dashboard.
   await expect(page).toHaveURL(/\/dashboard$/);
 
   const name = `E2E Visit Test Patient ${Date.now()}`;
@@ -82,5 +82,9 @@ test("only a HOSPITAL_ADMIN can record a reversal", async ({ page }) => {
   await page.getByRole("button", { name: "Record reversal" }).click();
 
   await expect(page.getByText("Partially paid — ₹250.00 of ₹300.00")).toBeVisible();
-  await expect(page.getByText("Test refund")).toBeVisible();
+  // The payment history renders both a mobile card (first in the DOM,
+  // hidden via CSS at this test's desktop viewport) and a desktop
+  // table for the same rows, so this text matches twice -- .last()
+  // picks the one actually visible here.
+  await expect(page.getByText("Test refund").last()).toBeVisible();
 });

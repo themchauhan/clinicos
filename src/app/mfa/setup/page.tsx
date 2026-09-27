@@ -20,10 +20,12 @@ export default async function MfaSetupPage({
   const next = safeNextPath((await searchParams).next) ?? "/dashboard";
   const status = await getMfaStatus(profile.role);
 
-  if (status === "not_required" || status === "satisfied") {
+  if (status === "satisfied") {
     redirect(next);
   }
   if (status === "challenge_required") {
+    // Already has a verified factor -- verify this session rather than
+    // enroll a second one.
     redirect(`/mfa/verify?next=${encodeURIComponent(next)}`);
   }
 
@@ -35,8 +37,10 @@ export default async function MfaSetupPage({
             Set up two-factor authentication
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Required for admin accounts. You&apos;ll need an authenticator app (Google
-            Authenticator, Authy, 1Password, etc.).
+            {status === "enroll_required"
+              ? "Required for platform admin accounts."
+              : "Optional, for extra account security."}{" "}
+            You&apos;ll need an authenticator app (Google Authenticator, Authy, 1Password, etc.).
           </p>
         </div>
         <MfaSetupForm next={next} />

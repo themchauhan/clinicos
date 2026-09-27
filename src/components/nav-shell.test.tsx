@@ -40,7 +40,7 @@ describe("NavShell", () => {
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
   });
 
-  it("hides Settings from a RECEPTIONIST", () => {
+  it("hides Settings and Security from a RECEPTIONIST", () => {
     render(
       <NavShell
         session={{
@@ -54,6 +54,41 @@ describe("NavShell", () => {
     );
 
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Security" })).not.toBeInTheDocument();
+  });
+
+  it("shows Security to a HOSPITAL_ADMIN and to a SUPER_ADMIN", () => {
+    render(
+      <NavShell
+        session={{
+          email: "admin@sunrise.test",
+          role: "HOSPITAL_ADMIN",
+          hospitalName: "Sunrise",
+          enabledModules: ["GENERAL_OPD"],
+        }}
+        onSignOut={() => {}}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute(
+      "href",
+      "/account/security",
+    );
+
+    render(
+      <NavShell
+        session={{
+          email: "super@platform.test",
+          role: "SUPER_ADMIN",
+          hospitalName: null,
+          enabledModules: [],
+        }}
+        onSignOut={() => {}}
+      />,
+    );
+    expect(screen.getAllByRole("link", { name: "Security" })[0]).toHaveAttribute(
+      "href",
+      "/account/security",
+    );
   });
 
   it("hides USG from a hospital that hasn't enabled that module", () => {
