@@ -60,81 +60,83 @@ export function VisitTypeForm({
   }, [state]);
 
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-3">
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={`vt-module-${visitTypeId ?? "new"}`} className="text-sm font-medium">
-          Module
-        </label>
-        <select
-          id={`vt-module-${visitTypeId ?? "new"}`}
-          name="module"
-          required
-          defaultValue={defaults?.module ?? ""}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
-        >
-          <option value="" disabled>
-            Choose a module
-          </option>
-          <option value="GENERAL_OPD">General OPD</option>
-          <option value="USG">USG</option>
-        </select>
+    <form action={formAction} className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`vt-module-${visitTypeId ?? "new"}`} className="text-sm font-medium">
+            Module
+          </label>
+          <select
+            id={`vt-module-${visitTypeId ?? "new"}`}
+            name="module"
+            required
+            defaultValue={defaults?.module ?? ""}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+          >
+            <option value="" disabled>
+              Choose a module
+            </option>
+            <option value="GENERAL_OPD">General OPD</option>
+            <option value="USG">USG</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`vt-name-${visitTypeId ?? "new"}`} className="text-sm font-medium">
+            Visit type name
+          </label>
+          <input
+            id={`vt-name-${visitTypeId ?? "new"}`}
+            name="name"
+            type="text"
+            required
+            defaultValue={defaults?.name}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`vt-fee-${visitTypeId ?? "new"}`} className="text-sm font-medium">
+            Default fee (₹)
+          </label>
+          <input
+            id={`vt-fee-${visitTypeId ?? "new"}`}
+            name="defaultFee"
+            type="number"
+            min={0}
+            step="0.01"
+            defaultValue={defaults?.defaultFee ?? ""}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`vt-description-${visitTypeId ?? "new"}`} className="text-sm font-medium">
+            Visit type description
+          </label>
+          <input
+            id={`vt-description-${visitTypeId ?? "new"}`}
+            name="description"
+            type="text"
+            defaultValue={defaults?.description ?? ""}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+          />
+        </div>
+
+        {visitTypeId ? (
+          <label className="flex items-center gap-2 pb-2 text-sm">
+            <input type="checkbox" name="active" defaultChecked={defaults?.active ?? true} />
+            Active
+          </label>
+        ) : (
+          <input type="hidden" name="active" value="on" />
+        )}
+
+        <SubmitButton label={submitLabel} />
       </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={`vt-name-${visitTypeId ?? "new"}`} className="text-sm font-medium">
-          Visit type name
-        </label>
-        <input
-          id={`vt-name-${visitTypeId ?? "new"}`}
-          name="name"
-          type="text"
-          required
-          defaultValue={defaults?.name}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={`vt-fee-${visitTypeId ?? "new"}`} className="text-sm font-medium">
-          Default fee (₹)
-        </label>
-        <input
-          id={`vt-fee-${visitTypeId ?? "new"}`}
-          name="defaultFee"
-          type="number"
-          min={0}
-          step="0.01"
-          defaultValue={defaults?.defaultFee ?? ""}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={`vt-description-${visitTypeId ?? "new"}`} className="text-sm font-medium">
-          Visit type description
-        </label>
-        <input
-          id={`vt-description-${visitTypeId ?? "new"}`}
-          name="description"
-          type="text"
-          defaultValue={defaults?.description ?? ""}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
-        />
-      </div>
-
-      {visitTypeId ? (
-        <label className="flex items-center gap-2 pb-2 text-sm">
-          <input type="checkbox" name="active" defaultChecked={defaults?.active ?? true} />
-          Active
-        </label>
-      ) : (
-        <input type="hidden" name="active" value="on" />
-      )}
-
-      <SubmitButton label={submitLabel} />
 
       {state.error ? (
-        <p role="alert" className="basis-full text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
         </p>
       ) : null}

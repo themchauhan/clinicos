@@ -81,8 +81,44 @@ export default async function AdminPage() {
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-lg font-semibold text-slate-900">Centres</h2>
         {hospitals && hospitals.length > 0 ? (
-          <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0">
-            <table className="mt-4 w-full min-w-[640px] text-left text-sm sm:min-w-0">
+          <>
+            {/* Card list below `sm` — a 6-column table doesn't fit a
+                phone screen usefully even with horizontal scroll, so
+                mobile gets a stacked list instead. */}
+            <div className="mt-4 flex flex-col gap-3 sm:hidden">
+              {hospitals.map((h) => (
+                <Link
+                  key={h.id}
+                  href={`/admin/hospitals/${h.id}`}
+                  className="rounded-lg border border-slate-200 p-4 transition-colors hover:bg-slate-50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium text-teal-700">{h.name}</p>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[h.status]}`}
+                    >
+                      {h.status}
+                    </span>
+                  </div>
+                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-slate-600">
+                    <dt className="text-slate-400">Plan</dt>
+                    <dd>{h.plan}</dd>
+                    <dt className="text-slate-400">Modules</dt>
+                    <dd>{h.hospital_modules.map((m) => m.module).join(", ") || "—"}</dd>
+                    <dt className="text-slate-400">Trial ends</dt>
+                    <dd>{new Date(h.trial_ends_at).toLocaleDateString()}</dd>
+                    <dt className="text-slate-400">Subscription ends</dt>
+                    <dd>
+                      {h.subscription_ends_at
+                        ? new Date(h.subscription_ends_at).toLocaleDateString()
+                        : "—"}
+                    </dd>
+                  </dl>
+                </Link>
+              ))}
+            </div>
+
+            <table className="mt-4 hidden w-full text-left text-sm sm:table">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
                   <th className="py-2 font-medium">Name</th>
@@ -127,7 +163,7 @@ export default async function AdminPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </>
         ) : (
           <p className="mt-4 text-sm text-slate-500">No centres yet.</p>
         )}

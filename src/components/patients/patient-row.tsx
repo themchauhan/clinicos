@@ -44,3 +44,25 @@ export function PatientRow({ patient }: { patient: PatientRowData }) {
     </tr>
   );
 }
+
+/** Mobile counterpart to PatientRow — a table row doesn't fit a phone
+ * screen usefully, so this renders the same data as a stacked card. */
+export function PatientCard({ patient }: { patient: PatientRowData }) {
+  return (
+    <Link
+      href={`/dashboard/patients/${patient.id}`}
+      className="block rounded-lg border border-zinc-200 p-4 transition-colors hover:bg-slate-50 dark:border-zinc-800"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="font-medium">{patient.name}</p>
+        <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{patient.patient_code}</p>
+      </div>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+        <dt className="text-zinc-400 dark:text-zinc-500">Mobile</dt>
+        <dd>{patient.mobile ?? "—"}</dd>
+        <dt className="text-zinc-400 dark:text-zinc-500">Guardian</dt>
+        <dd>{patient.guardian_name ?? "—"}</dd>
+      </dl>
+    </Link>
+  );
+}

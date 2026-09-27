@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { PatientRow } from "@/components/patients/patient-row";
+import { PatientRow, PatientCard } from "@/components/patients/patient-row";
+import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Patients — ClinicOS" };
 
@@ -25,7 +26,8 @@ export default async function PatientsPage({
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <div className="flex items-center justify-between gap-4">
+      <BackLink href="/dashboard" label="Dashboard" />
+      <div className="mt-3 flex items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">Patients</h1>
         <Link
           href="/dashboard/patients/new"
@@ -54,8 +56,14 @@ export default async function PatientsPage({
 
       <div className="mt-8">
         {patients && patients.length > 0 ? (
-          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <table className="w-full min-w-[480px] text-left text-sm sm:min-w-0">
+          <>
+            <div className="flex flex-col gap-3 sm:hidden">
+              {patients.map((patient) => (
+                <PatientCard key={patient.id} patient={patient} />
+              ))}
+            </div>
+
+            <table className="hidden w-full text-left text-sm sm:table">
               <thead>
                 <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                   <th className="py-2 font-medium">Code</th>
@@ -70,7 +78,7 @@ export default async function PatientsPage({
                 ))}
               </tbody>
             </table>
-          </div>
+          </>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {query ? `No patients match "${query}".` : "No patients registered yet."}

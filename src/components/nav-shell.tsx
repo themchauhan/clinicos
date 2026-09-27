@@ -2,16 +2,34 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { StaffRole } from "@/types/database";
+import type { ModuleType, StaffRole } from "@/types/database";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/patients", label: "Patients" },
-  { href: "/visits", label: "Visits" },
-  { href: "/dashboard/usg", label: "USG" },
+  { href: "/dashboard/visits", label: "Visits" },
+  { href: "/dashboard/usg", label: "USG", requiresModule: "USG" as ModuleType },
   { href: "/dashboard/documents", label: "Documents" },
-  { href: "/dashboard/settings", label: "Settings" },
+  { href: "/dashboard/settings", label: "Settings", requiresRole: "HOSPITAL_ADMIN" as StaffRole },
 ] as const;
+
+/**
+ * A link with `requiresRole`/`requiresModule` only shows once we know
+ * the signed-in user's role/enabled modules — shown unconditionally
+ * when signed out (there's nothing role-specific to hide yet). This
+ * mirrors the pages themselves, which redirect away rather than crash
+ * for a role/module that shouldn't be there in the first place.
+ */
+function visibleLinks(session: NavShellSession | null | undefined) {
+  return NAV_LINKS.filter((link) => {
+    if (!session) return true;
+    if ("requiresRole" in link && session.role !== link.requiresRole) return false;
+    if ("requiresModule" in link && !session.enabledModules.includes(link.requiresModule)) {
+      return false;
+    }
+    return true;
+  });
+}
 
 const ROLE_LABELS: Record<StaffRole, string> = {
   SUPER_ADMIN: "Platform admin",
@@ -23,12 +41,11 @@ export interface NavShellSession {
   email: string;
   role: StaffRole;
   hospitalName: string | null;
+  enabledModules: ModuleType[];
 }
 
 /**
- * The Visits link is still a placeholder — visits are per-patient
- * only (no top-level /visits list exists yet). Phase 1b added the
- * real sign-in/sign-out control on the right.
+ * Phase 1b added the real sign-in/sign-out control on the right.
  *
  * `onSignOut` is passed in (rather than importing the `signOut`
  * server action directly here) so this component stays a plain,
@@ -59,7 +76,7 @@ export function NavShell({
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 sm:flex">
-          {NAV_LINKS.map((link) => (
+          {visibleLinks(session).map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -142,7 +159,7 @@ export function NavShell({
           />
           <div className="animate-slide-down absolute inset-x-0 top-full z-50 border-t border-slate-200 bg-white px-4 pb-4 shadow-lg sm:hidden">
             <nav aria-label="Primary" className="flex flex-col">
-              {NAV_LINKS.map((link) => (
+              {visibleLinks(session).map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

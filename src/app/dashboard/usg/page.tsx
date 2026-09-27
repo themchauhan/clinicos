@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { BackLink } from "@/components/back-link";
 import type { PaymentMode } from "@/types/database";
 
 export const metadata: Metadata = { title: "USG dashboard — ClinicOS" };
@@ -123,7 +124,8 @@ export default async function UsgDashboardPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+      <BackLink href="/dashboard" label="Dashboard" />
+      <p className="mt-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
         {profile.hospital?.name ?? "Your centre"}
       </p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">

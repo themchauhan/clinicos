@@ -23,8 +23,65 @@ export function VisitTypeList({ visitTypes }: { visitTypes: VisitTypeRow[] }) {
   }
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <table className="w-full min-w-[560px] text-left text-sm sm:min-w-0">
+    <>
+      <div className="flex flex-col gap-3 sm:hidden">
+        {visitTypes.map((vt) =>
+          editingId === vt.id ? (
+            <div key={vt.id} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+              <VisitTypeForm
+                visitTypeId={vt.id}
+                submitLabel="Save"
+                defaults={{
+                  module: vt.module,
+                  name: vt.name,
+                  description: vt.description,
+                  defaultFee: vt.default_fee,
+                  active: vt.active,
+                }}
+                onSaved={() => setEditingId(null)}
+              />
+              <button
+                type="button"
+                onClick={() => setEditingId(null)}
+                className="mt-2 text-sm text-zinc-500 underline dark:text-zinc-400"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div key={vt.id} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+              <div className="flex items-start justify-between gap-3">
+                <p className="font-medium">{vt.name}</p>
+                <button
+                  type="button"
+                  onClick={() => setEditingId(vt.id)}
+                  className="shrink-0 text-sm text-teal-700 underline hover:text-teal-800"
+                >
+                  Edit
+                </button>
+              </div>
+              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                <dt className="text-zinc-400 dark:text-zinc-500">Module</dt>
+                <dd>{MODULE_LABELS[vt.module]}</dd>
+                <dt className="text-zinc-400 dark:text-zinc-500">Default fee</dt>
+                <dd>{vt.default_fee != null ? `₹${Number(vt.default_fee).toFixed(2)}` : "—"}</dd>
+                <dt className="text-zinc-400 dark:text-zinc-500">Status</dt>
+                <dd
+                  className={
+                    vt.active
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-zinc-500 dark:text-zinc-500"
+                  }
+                >
+                  {vt.active ? "Active" : "Inactive"}
+                </dd>
+              </dl>
+            </div>
+          ),
+        )}
+      </div>
+
+      <table className="hidden w-full text-left text-sm sm:table">
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             <th className="py-2 font-medium">Name</th>
@@ -96,6 +153,6 @@ export function VisitTypeList({ visitTypes }: { visitTypes: VisitTypeRow[] }) {
           )}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }

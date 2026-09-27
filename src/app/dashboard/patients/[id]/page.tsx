@@ -103,8 +103,33 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
         </div>
 
         {visits && visits.length > 0 ? (
-          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <table className="mt-4 w-full min-w-[480px] text-left text-sm sm:min-w-0">
+          <>
+            <div className="mt-4 flex flex-col gap-3 sm:hidden">
+              {visits.map((v) => {
+                const amountPaid = sumPayments(v.visit_payments);
+                const status = derivePaymentStatus(Number(v.fee_amount), amountPaid);
+                return (
+                  <Link
+                    key={v.id}
+                    href={`/dashboard/visits/${v.id}`}
+                    className="block rounded-lg border border-zinc-200 p-4 transition-colors hover:bg-slate-50 dark:border-zinc-800"
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="font-medium">#{v.visit_number}</p>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">{v.visit_date}</p>
+                    </div>
+                    <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      <dt className="text-zinc-400 dark:text-zinc-500">Type</dt>
+                      <dd>{v.visit_types!.name}</dd>
+                      <dt className="text-zinc-400 dark:text-zinc-500">Payment</dt>
+                      <dd>{status}</dd>
+                    </dl>
+                  </Link>
+                );
+              })}
+            </div>
+
+            <table className="mt-4 hidden w-full text-left text-sm sm:table">
               <thead>
                 <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                   <th className="py-2 font-medium">Date</th>
@@ -135,7 +160,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                 })}
               </tbody>
             </table>
-          </div>
+          </>
         ) : (
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No visits yet.</p>
         )}

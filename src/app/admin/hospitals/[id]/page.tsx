@@ -89,8 +89,35 @@ export default async function HospitalDetailPage({ params }: { params: Promise<{
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-lg font-semibold text-slate-900">Payment history</h2>
         {payments && payments.length > 0 ? (
-          <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0">
-            <table className="mt-4 w-full min-w-[640px] text-left text-sm sm:min-w-0">
+          <>
+            <div className="mt-4 flex flex-col gap-3 sm:hidden">
+              {payments.map((p) => (
+                <div key={p.id} className="rounded-lg border border-slate-200 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className={p.is_reversal ? "font-medium text-red-600" : "font-medium"}>
+                      ₹{Number(p.amount).toFixed(2)}
+                    </p>
+                    <p className="shrink-0 text-sm text-slate-500">
+                      {new Date(p.payment_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-slate-600">
+                    <dt className="text-slate-400">Method</dt>
+                    <dd>{p.payment_method}</dd>
+                    <dt className="text-slate-400">Reference</dt>
+                    <dd>{p.reference_number ?? "—"}</dd>
+                    <dt className="text-slate-400">Period</dt>
+                    <dd>
+                      {p.period_start} – {p.period_end}
+                    </dd>
+                    <dt className="text-slate-400">Notes</dt>
+                    <dd>{p.notes ?? "—"}</dd>
+                  </dl>
+                </div>
+              ))}
+            </div>
+
+            <table className="mt-4 hidden w-full text-left text-sm sm:table">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
                   <th className="py-2 font-medium">Date</th>
@@ -120,7 +147,7 @@ export default async function HospitalDetailPage({ params }: { params: Promise<{
                 ))}
               </tbody>
             </table>
-          </div>
+          </>
         ) : (
           <p className="mt-4 text-sm text-slate-500">No payments recorded yet.</p>
         )}

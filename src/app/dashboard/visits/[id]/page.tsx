@@ -140,8 +140,36 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
         </div>
 
         {visit.visit_payments.length > 0 ? (
-          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <table className="mt-4 w-full max-w-lg min-w-[480px] text-left text-sm sm:min-w-0">
+          <>
+            <div className="mt-4 flex flex-col gap-3 sm:hidden">
+              {visit.visit_payments.map((p) => (
+                <div
+                  key={p.id}
+                  className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p
+                      className={
+                        p.is_reversal ? "font-medium text-red-600 dark:text-red-400" : "font-medium"
+                      }
+                    >
+                      ₹{Number(p.amount).toFixed(2)}
+                    </p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      {new Date(p.received_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <dt className="text-zinc-400 dark:text-zinc-500">Mode</dt>
+                    <dd>{p.mode}</dd>
+                    <dt className="text-zinc-400 dark:text-zinc-500">Note</dt>
+                    <dd>{p.note ?? "—"}</dd>
+                  </dl>
+                </div>
+              ))}
+            </div>
+
+            <table className="mt-4 hidden w-full max-w-lg text-left text-sm sm:table">
               <thead>
                 <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                   <th className="py-2 font-medium">When</th>
@@ -168,7 +196,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
                 ))}
               </tbody>
             </table>
-          </div>
+          </>
         ) : null}
 
         <div className="mt-6">

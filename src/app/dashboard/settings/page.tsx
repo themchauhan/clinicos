@@ -9,6 +9,7 @@ import { VisitTypeForm } from "@/components/settings/visit-type-form";
 import { DocumentTypeList } from "@/components/settings/document-type-list";
 import { DocumentTypeForm } from "@/components/settings/document-type-form";
 import { RequirementsMatrix } from "@/components/settings/requirements-matrix";
+import { BackLink } from "@/components/back-link";
 import type { ModuleType } from "@/types/database";
 
 export const metadata: Metadata = { title: "Settings — ClinicOS" };
@@ -25,6 +26,9 @@ export default async function SettingsPage() {
   const profile = await getSessionProfile();
   if (!profile) {
     redirect("/login?next=/dashboard/settings");
+  }
+  if (profile.role !== "HOSPITAL_ADMIN") {
+    redirect("/dashboard");
   }
   requireRole(profile, ["HOSPITAL_ADMIN"]);
 
@@ -47,7 +51,8 @@ export default async function SettingsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+      <BackLink href="/dashboard" label="Dashboard" />
+      <p className="mt-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
         {profile.hospital?.name ?? "Your centre"}
       </p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Settings</h1>

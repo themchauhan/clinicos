@@ -14,8 +14,30 @@ export function DocumentList({ documents }: { documents: DocumentRow[] }) {
   }
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <table className="w-full max-w-2xl min-w-[480px] text-left text-sm sm:min-w-0">
+    <>
+      <div className="flex flex-col gap-3 sm:hidden">
+        {documents.map((doc) => (
+          <div key={doc.id} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-medium">
+                {doc.document_types?.name ?? "—"}
+                {doc.document_types?.sensitive ? (
+                  <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                    Sensitive
+                  </span>
+                ) : null}
+              </p>
+              <ViewDocumentButton documentId={doc.id} />
+            </div>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{doc.file_name}</p>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+              {new Date(doc.created_at).toLocaleDateString()}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <table className="hidden w-full max-w-2xl text-left text-sm sm:table">
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             <th className="py-2 font-medium">Type</th>
@@ -51,6 +73,6 @@ export function DocumentList({ documents }: { documents: DocumentRow[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }

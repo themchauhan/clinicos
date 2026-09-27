@@ -21,8 +21,52 @@ export function StaffList({ staff, currentUserId }: { staff: StaffRow[]; current
   }
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <table className="w-full min-w-[560px] text-left text-sm sm:min-w-0">
+    <>
+      <div className="flex flex-col gap-3 sm:hidden">
+        {staff.map((member) => (
+          <div
+            key={member.id}
+            className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium">{member.name}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">{member.email}</p>
+              </div>
+              <span
+                className={
+                  member.status === "ACTIVE"
+                    ? "shrink-0 text-sm text-emerald-700 dark:text-emerald-400"
+                    : "shrink-0 text-sm text-zinc-500 dark:text-zinc-500"
+                }
+              >
+                {member.status === "ACTIVE" ? "Active" : "Deactivated"}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="text-sm text-zinc-500 dark:text-zinc-500">{ROLE_LABELS[member.role]}</p>
+              {member.id === currentUserId ? null : (
+                <form
+                  action={setStaffStatus.bind(
+                    null,
+                    member.id,
+                    member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+                  )}
+                >
+                  <button
+                    type="submit"
+                    className="rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                  >
+                    {member.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <table className="hidden w-full text-left text-sm sm:table">
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             <th className="py-2 font-medium">Name</th>
@@ -73,6 +117,6 @@ export function StaffList({ staff, currentUserId }: { staff: StaffRow[]; current
           ))}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }

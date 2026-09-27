@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Pending documents — ClinicOS" };
 
@@ -42,15 +43,48 @@ export default async function PendingDocumentsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Pending documents</h1>
+      <BackLink href="/dashboard" label="Dashboard" />
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight">Pending documents</h1>
       <p className="mt-2 max-w-xl text-sm text-zinc-600 dark:text-zinc-400">
         Visits missing a document their visit type requires. Nothing here means every required
         document has been captured.
       </p>
 
       {pending.length > 0 ? (
-        <div className="-mx-4 mt-8 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <table className="w-full max-w-3xl min-w-[520px] text-left text-sm sm:min-w-0">
+        <>
+          <div className="mt-8 flex flex-col gap-3 sm:hidden">
+            {pending.map((r) => {
+              const visit = r.visits!;
+              const patient = visit.patients!;
+              return (
+                <div
+                  key={r.id}
+                  className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+                >
+                  <Link
+                    href={`/dashboard/patients/${patient.id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {patient.name} ({patient.patient_code})
+                  </Link>
+                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <dt className="text-zinc-400 dark:text-zinc-500">Visit</dt>
+                    <dd>
+                      <Link href={`/dashboard/visits/${visit.id}`} className="hover:underline">
+                        #{visit.visit_number}
+                      </Link>
+                    </dd>
+                    <dt className="text-zinc-400 dark:text-zinc-500">Date</dt>
+                    <dd>{visit.visit_date}</dd>
+                    <dt className="text-zinc-400 dark:text-zinc-500">Missing</dt>
+                    <dd className="text-amber-700 dark:text-amber-400">{r.document_type_name}</dd>
+                  </dl>
+                </div>
+              );
+            })}
+          </div>
+
+          <table className="mt-8 hidden w-full max-w-3xl text-left text-sm sm:table">
             <thead>
               <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                 <th className="py-2 font-medium">Patient</th>
@@ -87,7 +121,7 @@ export default async function PendingDocumentsPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </>
       ) : (
         <p className="mt-8 text-sm text-zinc-500 dark:text-zinc-400">
           Nothing pending — every required document has been captured.

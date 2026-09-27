@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { InviteStaffForm } from "@/components/staff/invite-staff-form";
 import { StaffList } from "@/components/staff/staff-list";
+import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Staff — ClinicOS" };
 
@@ -16,6 +17,9 @@ export default async function StaffPage() {
   if (!profile) {
     redirect("/login?next=/dashboard/staff");
   }
+  if (profile.role !== "HOSPITAL_ADMIN") {
+    redirect("/dashboard");
+  }
   requireRole(profile, ["HOSPITAL_ADMIN"]);
 
   const supabase = await createClient();
@@ -26,7 +30,8 @@ export default async function StaffPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+      <BackLink href="/dashboard" label="Dashboard" />
+      <p className="mt-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
         {profile.hospital?.name ?? "Your centre"}
       </p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Staff</h1>
