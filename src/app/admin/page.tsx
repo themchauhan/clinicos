@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
@@ -17,10 +18,21 @@ const STATUS_STYLES: Record<HospitalStatus, string> = {
 };
 
 export default async function AdminPage() {
-  // Session/platform-admin/MFA gating is handled by admin/layout.tsx;
-  // this call stays as defensive redundancy, same convention
-  // dashboard/staff uses on top of dashboard/layout.tsx.
-  requireRole(await getSessionProfile(), ["SUPER_ADMIN"]);
+  // admin/layout.tsx already confirmed a signed-in, platform-admin,
+  // MFA-satisfied profile -- this explicit re-check (rather than a
+  // bare requireRole call) is what actually degrades gracefully to a
+  // redirect if that ever isn't true by the time this page renders,
+  // same pattern as dashboard/staff and dashboard/settings on top of
+  // dashboard/layout.tsx. requireRole below is then just the final,
+  // never-actually-throwing assertion for type-narrowing.
+  const profile = await getSessionProfile();
+  if (!profile) {
+    redirect("/login?next=/admin");
+  }
+  if (!profile.isPlatformAdmin) {
+    redirect("/dashboard");
+  }
+  requireRole(profile, ["SUPER_ADMIN"]);
 
   const supabase = await createClient();
   const { data: hospitals } = await supabase
