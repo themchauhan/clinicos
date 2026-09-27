@@ -99,34 +99,36 @@ export function RequirementsMatrix({
   );
 
   return (
-    <table className="text-left text-sm">
-      <thead>
-        <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          <th className="py-2 pr-4 font-medium">Document type</th>
-          {activeVisitTypes.map((vt) => (
-            <th key={vt.id} className="px-2 py-2 font-medium">
-              {vt.name}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {activeDocumentTypes.map((dt) => (
-          <tr key={dt.id} className="border-b border-zinc-100 dark:border-zinc-900">
-            <td className="py-2 pr-4">{dt.name}</td>
+    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <table className="text-left text-sm">
+        <thead>
+          <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            <th className="py-2 pr-4 font-medium whitespace-nowrap">Document type</th>
             {activeVisitTypes.map((vt) => (
-              <td key={vt.id} className="px-2 py-2">
-                <Cell
-                  visitTypeId={vt.id}
-                  visitTypeName={vt.name}
-                  documentTypeId={dt.id}
-                  required={requirementByKey.get(`${vt.id}:${dt.id}`) ?? null}
-                />
-              </td>
+              <th key={vt.id} className="px-2 py-2 font-medium whitespace-nowrap">
+                {vt.name}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {activeDocumentTypes.map((dt) => (
+            <tr key={dt.id} className="border-b border-zinc-100 dark:border-zinc-900">
+              <td className="py-2 pr-4 whitespace-nowrap">{dt.name}</td>
+              {activeVisitTypes.map((vt) => (
+                <td key={vt.id} className="px-2 py-2">
+                  <Cell
+                    visitTypeId={vt.id}
+                    visitTypeName={vt.name}
+                    documentTypeId={dt.id}
+                    required={requirementByKey.get(`${vt.id}:${dt.id}`) ?? null}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

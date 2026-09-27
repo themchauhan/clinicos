@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { PatientRow } from "@/components/patients/patient-row";
 
 export const metadata: Metadata = { title: "Patients — Hospital & USG Records" };
 
@@ -53,42 +54,23 @@ export default async function PatientsPage({
 
       <div className="mt-8">
         {patients && patients.length > 0 ? (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                <th className="py-2 font-medium">Code</th>
-                <th className="py-2 font-medium">Name</th>
-                <th className="py-2 font-medium">Mobile</th>
-                <th className="py-2 font-medium">Guardian</th>
-              </tr>
-            </thead>
-            <tbody>
-              {patients.map((patient) => (
-                <tr
-                  key={patient.id}
-                  className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
-                >
-                  <td className="py-2">
-                    <Link
-                      href={`/dashboard/patients/${patient.id}`}
-                      className="font-mono text-zinc-600 hover:underline dark:text-zinc-400"
-                    >
-                      {patient.patient_code}
-                    </Link>
-                  </td>
-                  <td className="py-2">
-                    <Link href={`/dashboard/patients/${patient.id}`} className="hover:underline">
-                      {patient.name}
-                    </Link>
-                  </td>
-                  <td className="py-2 text-zinc-600 dark:text-zinc-400">{patient.mobile ?? "—"}</td>
-                  <td className="py-2 text-zinc-600 dark:text-zinc-400">
-                    {patient.guardian_name ?? "—"}
-                  </td>
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[480px] text-left text-sm sm:min-w-0">
+              <thead>
+                <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <th className="py-2 font-medium">Code</th>
+                  <th className="py-2 font-medium">Name</th>
+                  <th className="py-2 font-medium">Mobile</th>
+                  <th className="py-2 font-medium">Guardian</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {patients.map((patient) => (
+                  <PatientRow key={patient.id} patient={patient} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {query ? `No patients match "${query}".` : "No patients registered yet."}

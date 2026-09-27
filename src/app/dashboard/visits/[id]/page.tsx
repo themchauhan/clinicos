@@ -11,6 +11,7 @@ import { UploadDocumentForm } from "@/components/documents/upload-document-form"
 import { DocumentList } from "@/components/documents/document-list";
 import { ScanWithPhoneButton } from "@/components/scans/scan-with-phone-button";
 import { StatusTransitionButtons } from "@/components/visits/status-transition-buttons";
+import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Visit — Hospital & USG Records" };
 
@@ -78,7 +79,8 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <div className="flex items-start justify-between gap-4">
+      <BackLink href={`/dashboard/patients/${visit.patients!.id}`} label={visit.patients!.name} />
+      <div className="mt-3 flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
             <Link href={`/dashboard/patients/${visit.patients!.id}`} className="hover:underline">
@@ -138,33 +140,35 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
         </div>
 
         {visit.visit_payments.length > 0 ? (
-          <table className="mt-4 w-full max-w-lg text-left text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                <th className="py-2 font-medium">When</th>
-                <th className="py-2 font-medium">Amount</th>
-                <th className="py-2 font-medium">Mode</th>
-                <th className="py-2 font-medium">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visit.visit_payments.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
-                >
-                  <td className="py-2 text-zinc-600 dark:text-zinc-400">
-                    {new Date(p.received_at).toLocaleString()}
-                  </td>
-                  <td className={p.is_reversal ? "py-2 text-red-600 dark:text-red-400" : "py-2"}>
-                    ₹{Number(p.amount).toFixed(2)}
-                  </td>
-                  <td className="py-2">{p.mode}</td>
-                  <td className="py-2 text-zinc-600 dark:text-zinc-400">{p.note ?? "—"}</td>
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <table className="mt-4 w-full max-w-lg min-w-[480px] text-left text-sm sm:min-w-0">
+              <thead>
+                <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <th className="py-2 font-medium">When</th>
+                  <th className="py-2 font-medium">Amount</th>
+                  <th className="py-2 font-medium">Mode</th>
+                  <th className="py-2 font-medium">Note</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visit.visit_payments.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
+                  >
+                    <td className="py-2 text-zinc-600 dark:text-zinc-400">
+                      {new Date(p.received_at).toLocaleString()}
+                    </td>
+                    <td className={p.is_reversal ? "py-2 text-red-600 dark:text-red-400" : "py-2"}>
+                      ₹{Number(p.amount).toFixed(2)}
+                    </td>
+                    <td className="py-2">{p.mode}</td>
+                    <td className="py-2 text-zinc-600 dark:text-zinc-400">{p.note ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : null}
 
         <div className="mt-6">

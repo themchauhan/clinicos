@@ -6,6 +6,7 @@ import { derivePaymentStatus, sumPayments } from "@/lib/visits/payment-status";
 import { UploadDocumentForm } from "@/components/documents/upload-document-form";
 import { DocumentList } from "@/components/documents/document-list";
 import { ScanWithPhoneButton } from "@/components/scans/scan-with-phone-button";
+import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Patient — Hospital & USG Records" };
 
@@ -57,7 +58,8 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <div className="flex items-start justify-between gap-4">
+      <BackLink href="/dashboard/patients" label="Patients" />
+      <div className="mt-3 flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-sm text-zinc-500 dark:text-zinc-400">
             {patient.patient_code}
@@ -101,37 +103,39 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
         </div>
 
         {visits && visits.length > 0 ? (
-          <table className="mt-4 w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                <th className="py-2 font-medium">Date</th>
-                <th className="py-2 font-medium">Visit</th>
-                <th className="py-2 font-medium">Type</th>
-                <th className="py-2 font-medium">Payment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visits.map((v) => {
-                const amountPaid = sumPayments(v.visit_payments);
-                const status = derivePaymentStatus(Number(v.fee_amount), amountPaid);
-                return (
-                  <tr
-                    key={v.id}
-                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
-                  >
-                    <td className="py-2 text-zinc-600 dark:text-zinc-400">{v.visit_date}</td>
-                    <td className="py-2">
-                      <Link href={`/dashboard/visits/${v.id}`} className="hover:underline">
-                        #{v.visit_number}
-                      </Link>
-                    </td>
-                    <td className="py-2">{v.visit_types!.name}</td>
-                    <td className="py-2 text-zinc-600 dark:text-zinc-400">{status}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <table className="mt-4 w-full min-w-[480px] text-left text-sm sm:min-w-0">
+              <thead>
+                <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <th className="py-2 font-medium">Date</th>
+                  <th className="py-2 font-medium">Visit</th>
+                  <th className="py-2 font-medium">Type</th>
+                  <th className="py-2 font-medium">Payment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visits.map((v) => {
+                  const amountPaid = sumPayments(v.visit_payments);
+                  const status = derivePaymentStatus(Number(v.fee_amount), amountPaid);
+                  return (
+                    <tr
+                      key={v.id}
+                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
+                    >
+                      <td className="py-2 text-zinc-600 dark:text-zinc-400">{v.visit_date}</td>
+                      <td className="py-2">
+                        <Link href={`/dashboard/visits/${v.id}`} className="hover:underline">
+                          #{v.visit_number}
+                        </Link>
+                      </td>
+                      <td className="py-2">{v.visit_types!.name}</td>
+                      <td className="py-2 text-zinc-600 dark:text-zinc-400">{status}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No visits yet.</p>
         )}

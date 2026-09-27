@@ -81,51 +81,53 @@ export default async function AdminPage() {
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-lg font-semibold text-slate-900">Centres</h2>
         {hospitals && hospitals.length > 0 ? (
-          <table className="mt-4 w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="py-2 font-medium">Name</th>
-                <th className="py-2 font-medium">Status</th>
-                <th className="py-2 font-medium">Plan</th>
-                <th className="py-2 font-medium">Modules</th>
-                <th className="py-2 font-medium">Trial ends</th>
-                <th className="py-2 font-medium">Subscription ends</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hospitals.map((h) => (
-                <tr key={h.id} className="border-b border-slate-100 last:border-0">
-                  <td className="py-2">
-                    <Link
-                      href={`/admin/hospitals/${h.id}`}
-                      className="text-teal-700 hover:underline"
-                    >
-                      {h.name}
-                    </Link>
-                  </td>
-                  <td className="py-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[h.status]}`}
-                    >
-                      {h.status}
-                    </span>
-                  </td>
-                  <td className="py-2 text-slate-600">{h.plan}</td>
-                  <td className="py-2 text-slate-600">
-                    {h.hospital_modules.map((m) => m.module).join(", ") || "—"}
-                  </td>
-                  <td className="py-2 text-slate-600">
-                    {new Date(h.trial_ends_at).toLocaleDateString()}
-                  </td>
-                  <td className="py-2 text-slate-600">
-                    {h.subscription_ends_at
-                      ? new Date(h.subscription_ends_at).toLocaleDateString()
-                      : "—"}
-                  </td>
+          <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0">
+            <table className="mt-4 w-full min-w-[640px] text-left text-sm sm:min-w-0">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="py-2 font-medium">Name</th>
+                  <th className="py-2 font-medium">Status</th>
+                  <th className="py-2 font-medium">Plan</th>
+                  <th className="py-2 font-medium">Modules</th>
+                  <th className="py-2 font-medium">Trial ends</th>
+                  <th className="py-2 font-medium">Subscription ends</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {hospitals.map((h) => (
+                  <tr key={h.id} className="border-b border-slate-100 last:border-0">
+                    <td className="py-2">
+                      <Link
+                        href={`/admin/hospitals/${h.id}`}
+                        className="text-teal-700 hover:underline"
+                      >
+                        {h.name}
+                      </Link>
+                    </td>
+                    <td className="py-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[h.status]}`}
+                      >
+                        {h.status}
+                      </span>
+                    </td>
+                    <td className="py-2 text-slate-600">{h.plan}</td>
+                    <td className="py-2 text-slate-600">
+                      {h.hospital_modules.map((m) => m.module).join(", ") || "—"}
+                    </td>
+                    <td className="py-2 text-slate-600">
+                      {new Date(h.trial_ends_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-2 text-slate-600">
+                      {h.subscription_ends_at
+                        ? new Date(h.subscription_ends_at).toLocaleDateString()
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="mt-4 text-sm text-slate-500">No centres yet.</p>
         )}

@@ -49,43 +49,45 @@ export default async function PendingDocumentsPage() {
       </p>
 
       {pending.length > 0 ? (
-        <table className="mt-8 w-full max-w-3xl text-left text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-              <th className="py-2 font-medium">Patient</th>
-              <th className="py-2 font-medium">Visit</th>
-              <th className="py-2 font-medium">Date</th>
-              <th className="py-2 font-medium">Missing document</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pending.map((r) => {
-              const visit = r.visits!;
-              const patient = visit.patients!;
-              return (
-                <tr
-                  key={r.id}
-                  className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
-                >
-                  <td className="py-2">
-                    <Link href={`/dashboard/patients/${patient.id}`} className="hover:underline">
-                      {patient.name} ({patient.patient_code})
-                    </Link>
-                  </td>
-                  <td className="py-2">
-                    <Link href={`/dashboard/visits/${visit.id}`} className="hover:underline">
-                      #{visit.visit_number}
-                    </Link>
-                  </td>
-                  <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.visit_date}</td>
-                  <td className="py-2 text-amber-700 dark:text-amber-400">
-                    {r.document_type_name}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="-mx-4 mt-8 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <table className="w-full max-w-3xl min-w-[520px] text-left text-sm sm:min-w-0">
+            <thead>
+              <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                <th className="py-2 font-medium">Patient</th>
+                <th className="py-2 font-medium">Visit</th>
+                <th className="py-2 font-medium">Date</th>
+                <th className="py-2 font-medium">Missing document</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pending.map((r) => {
+                const visit = r.visits!;
+                const patient = visit.patients!;
+                return (
+                  <tr
+                    key={r.id}
+                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
+                  >
+                    <td className="py-2">
+                      <Link href={`/dashboard/patients/${patient.id}`} className="hover:underline">
+                        {patient.name} ({patient.patient_code})
+                      </Link>
+                    </td>
+                    <td className="py-2">
+                      <Link href={`/dashboard/visits/${visit.id}`} className="hover:underline">
+                        #{visit.visit_number}
+                      </Link>
+                    </td>
+                    <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.visit_date}</td>
+                    <td className="py-2 text-amber-700 dark:text-amber-400">
+                      {r.document_type_name}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <p className="mt-8 text-sm text-zinc-500 dark:text-zinc-400">
           Nothing pending — every required document has been captured.

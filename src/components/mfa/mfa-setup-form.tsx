@@ -119,7 +119,7 @@ export function MfaSetupForm({ next }: { next: string }) {
       />
       <p className="text-xs text-slate-500">
         Scan with your authenticator app, or enter this code manually:{" "}
-        <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono">{secret}</code>
+        <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono break-all">{secret}</code>
       </p>
 
       <div className="flex flex-col gap-1.5">

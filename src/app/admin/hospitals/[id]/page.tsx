@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { HospitalStatusForm } from "@/components/admin/hospital-status-form";
 import { HospitalPlanForm } from "@/components/admin/hospital-plan-form";
 import { RecordPaymentForm } from "@/components/admin/record-payment-form";
+import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Centre — Hospital & USG Records" };
 
@@ -36,7 +37,8 @@ export default async function HospitalDetailPage({ params }: { params: Promise<{
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <p className="text-sm font-medium text-slate-500">Platform admin</p>
+      <BackLink href="/admin" label="Super admin console" />
+      <p className="mt-3 text-sm font-medium text-slate-500">Platform admin</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{hospital.name}</h1>
       <p className="mt-1 text-sm text-slate-600">
         Modules: {hospital.hospital_modules.map((m) => m.module).join(", ") || "—"}
@@ -87,36 +89,38 @@ export default async function HospitalDetailPage({ params }: { params: Promise<{
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-lg font-semibold text-slate-900">Payment history</h2>
         {payments && payments.length > 0 ? (
-          <table className="mt-4 w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="py-2 font-medium">Date</th>
-                <th className="py-2 font-medium">Amount</th>
-                <th className="py-2 font-medium">Method</th>
-                <th className="py-2 font-medium">Reference</th>
-                <th className="py-2 font-medium">Period</th>
-                <th className="py-2 font-medium">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((p) => (
-                <tr key={p.id} className="border-b border-slate-100 last:border-0">
-                  <td className="py-2 text-slate-600">
-                    {new Date(p.payment_date).toLocaleDateString()}
-                  </td>
-                  <td className={p.is_reversal ? "py-2 text-red-600" : "py-2"}>
-                    ₹{Number(p.amount).toFixed(2)}
-                  </td>
-                  <td className="py-2">{p.payment_method}</td>
-                  <td className="py-2 text-slate-600">{p.reference_number ?? "—"}</td>
-                  <td className="py-2 text-slate-600">
-                    {p.period_start} – {p.period_end}
-                  </td>
-                  <td className="py-2 text-slate-600">{p.notes ?? "—"}</td>
+          <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0">
+            <table className="mt-4 w-full min-w-[640px] text-left text-sm sm:min-w-0">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="py-2 font-medium">Date</th>
+                  <th className="py-2 font-medium">Amount</th>
+                  <th className="py-2 font-medium">Method</th>
+                  <th className="py-2 font-medium">Reference</th>
+                  <th className="py-2 font-medium">Period</th>
+                  <th className="py-2 font-medium">Notes</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id} className="border-b border-slate-100 last:border-0">
+                    <td className="py-2 text-slate-600">
+                      {new Date(p.payment_date).toLocaleDateString()}
+                    </td>
+                    <td className={p.is_reversal ? "py-2 text-red-600" : "py-2"}>
+                      ₹{Number(p.amount).toFixed(2)}
+                    </td>
+                    <td className="py-2">{p.payment_method}</td>
+                    <td className="py-2 text-slate-600">{p.reference_number ?? "—"}</td>
+                    <td className="py-2 text-slate-600">
+                      {p.period_start} – {p.period_end}
+                    </td>
+                    <td className="py-2 text-slate-600">{p.notes ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="mt-4 text-sm text-slate-500">No payments recorded yet.</p>
         )}
