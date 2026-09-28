@@ -78,9 +78,11 @@ export function NavShell({
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
           onClick={() => setMenuOpen(false)}
         >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-teal-600 text-xs font-bold text-white">
-            +
-          </span>
+          <svg viewBox="0 0 100 100" className="h-7 w-7 shrink-0" aria-hidden="true">
+            <rect x="6" y="6" width="88" height="88" rx="22" fill="#0d9488" />
+            <rect x="28" y="42" width="44" height="16" rx="8" fill="#ffffff" />
+            <rect x="42" y="28" width="16" height="44" rx="8" fill="#ffffff" />
+          </svg>
           <span className="whitespace-nowrap">ClinicOS</span>
         </Link>
 
