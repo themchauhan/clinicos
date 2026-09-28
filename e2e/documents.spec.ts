@@ -29,7 +29,7 @@ test("upload a patient-level document, view it, and see it fulfil a visit requir
   const patientId = page.url().match(/\/dashboard\/patients\/([0-9a-f-]+)$/)![1];
 
   // Patient-level "ID Proof" upload.
-  await page.getByLabel("Document type", { exact: true }).selectOption({ label: "ID Proof" });
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
   await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
 
@@ -67,9 +67,7 @@ test("upload a patient-level document, view it, and see it fulfil a visit requir
 
   // Upload the visit-level document; the checklist should flip to
   // fulfilled after the page revalidates.
-  await page
-    .getByLabel("Document type", { exact: true })
-    .selectOption({ label: "OPD Slip / Prescription" });
+  await page.getByLabel("Document type").selectOption({ label: "OPD Slip / Prescription" });
   await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
 
@@ -88,7 +86,7 @@ test("rejects a disallowed file type with a clear error", async ({ page }) => {
   const name = `E2E Document Test Patient ${Date.now()}`;
   await createPatientViaUi(page, { name });
 
-  await page.getByLabel("Document type", { exact: true }).selectOption({ label: "ID Proof" });
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
   await page.locator('input[type="file"]#file').setInputFiles(NOT_AN_IMAGE);
   await page.getByRole("button", { name: "Upload" }).click();
 

@@ -3,9 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { derivePaymentStatus, sumPayments } from "@/lib/visits/payment-status";
-import { UploadDocumentForm } from "@/components/documents/upload-document-form";
+import { DocumentUploadPanel } from "@/components/documents/document-upload-panel";
 import { DocumentList } from "@/components/documents/document-list";
-import { ScanWithPhoneButton } from "@/components/scans/scan-with-phone-button";
 import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Patient — ClinicOS" };
@@ -176,13 +175,12 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
           Patient-level documents (e.g. ID proof) — captured once, reused on every visit.
         </p>
 
-        <div className="mt-4 flex flex-wrap items-start gap-6">
-          <UploadDocumentForm
+        <div className="mt-4">
+          <DocumentUploadPanel
             patientId={patient.id}
             revalidate={`/dashboard/patients/${patient.id}`}
             documentTypes={patientDocumentTypes ?? []}
           />
-          <ScanWithPhoneButton patientId={patient.id} documentTypes={patientDocumentTypes ?? []} />
         </div>
 
         <div className="mt-6">

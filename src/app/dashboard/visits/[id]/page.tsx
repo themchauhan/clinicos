@@ -7,9 +7,8 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { derivePaymentStatus, sumPayments } from "@/lib/visits/payment-status";
 import { PaymentForm } from "@/components/visits/payment-form";
 import { ReversalForm } from "@/components/visits/reversal-form";
-import { UploadDocumentForm } from "@/components/documents/upload-document-form";
+import { DocumentUploadPanel } from "@/components/documents/document-upload-panel";
 import { DocumentList } from "@/components/documents/document-list";
-import { ScanWithPhoneButton } from "@/components/scans/scan-with-phone-button";
 import { StatusTransitionButtons } from "@/components/visits/status-transition-buttons";
 import { BackLink } from "@/components/back-link";
 
@@ -245,16 +244,11 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
           </ul>
         ) : null}
 
-        <div className="mt-4 flex flex-wrap items-start gap-6">
-          <UploadDocumentForm
+        <div className="mt-4">
+          <DocumentUploadPanel
             patientId={visit.patients!.id}
             visitId={visit.id}
             revalidate={`/dashboard/visits/${visit.id}`}
-            documentTypes={visitDocumentTypes ?? []}
-          />
-          <ScanWithPhoneButton
-            patientId={visit.patients!.id}
-            visitId={visit.id}
             documentTypes={visitDocumentTypes ?? []}
           />
         </div>

@@ -24,7 +24,7 @@ test("scan with phone: desktop QR session, a separate browser context uploads pa
   const name = `E2E Scan Test Patient ${Date.now()}`;
   await createPatientViaUi(page, { name });
 
-  await page.getByLabel("Scan document type").selectOption({ label: "ID Proof" });
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
   await page.getByRole("button", { name: "Scan with phone" }).click();
 
   // The fallback plain-text link is what makes this testable without
@@ -84,7 +84,7 @@ test("an expired or already-finished scan link is rejected", async ({ page, cont
   const name = `E2E Scan Test Patient ${Date.now()}`;
   await createPatientViaUi(page, { name });
 
-  await page.getByLabel("Scan document type").selectOption({ label: "ID Proof" });
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
   await page.getByRole("button", { name: "Scan with phone" }).click();
   const scanUrl = await page.locator('a[href*="/scan#"]').getAttribute("href");
 

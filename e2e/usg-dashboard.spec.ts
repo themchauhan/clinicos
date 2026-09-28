@@ -33,7 +33,7 @@ test("a pregnancy/obstetric USG visit moves through the dashboard columns as its
   // ID Proof is required for every visit type (seeded), not just USG
   // — fulfil it once at the patient level before checking columns
   // below, or the visit would show as "Documents pending" forever.
-  await page.getByLabel("Document type", { exact: true }).selectOption({ label: "ID Proof" });
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
   await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
   // The document list renders a mobile card (first in the DOM, hidden
@@ -62,14 +62,12 @@ test("a pregnancy/obstetric USG visit moves through the dashboard columns as its
   await page.goto(visitUrl);
   const documentsTable = page.locator("table").last();
 
-  await page.getByLabel("Document type", { exact: true }).selectOption({ label: "USG Report" });
+  await page.getByLabel("Document type").selectOption({ label: "USG Report" });
   await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
   await expect(documentsTable.locator("td", { hasText: "USG Report" })).toBeVisible();
 
-  await page
-    .getByLabel("Document type", { exact: true })
-    .selectOption({ label: "PC-PNDT Declaration" });
+  await page.getByLabel("Document type").selectOption({ label: "PC-PNDT Declaration" });
   await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
   await expect(documentsTable.locator("td", { hasText: "PC-PNDT Declaration" })).toBeVisible();
