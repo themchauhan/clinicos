@@ -34,30 +34,41 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
     notFound();
   }
 
-  const [{ data: visits }, { data: patientDocumentTypes }, { data: documents }] = await Promise.all(
-    [
-      supabase
-        .from("visits")
-        .select(
-          "id, visit_number, visit_date, status, fee_amount, visit_types(name), visit_payments(amount)",
-        )
-        .eq("patient_id", patient.id)
-        .order("visit_date", { ascending: false })
-        .order("visit_number", { ascending: false }),
-      supabase
-        .from("document_types")
-        .select("id, name, requires_signature")
-        .eq("scope", "PATIENT")
-        .eq("active", true),
-      supabase
-        .from("documents")
-        .select("id, file_name, file_type, created_at, document_types(name, sensitive)")
-        .eq("patient_id", patient.id)
-        .is("visit_id", null)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-    ],
-  );
+  const [
+    { data: visits },
+    { data: patientDocumentTypes },
+    { data: documents },
+    { data: pairedDeviceRow },
+  ] = await Promise.all([
+    supabase
+      .from("visits")
+      .select(
+        "id, visit_number, visit_date, status, fee_amount, visit_types(name), visit_payments(amount)",
+      )
+      .eq("patient_id", patient.id)
+      .order("visit_date", { ascending: false })
+      .order("visit_number", { ascending: false }),
+    supabase
+      .from("document_types")
+      .select("id, name, requires_signature")
+      .eq("scope", "PATIENT")
+      .eq("active", true),
+    supabase
+      .from("documents")
+      .select("id, file_name, file_type, created_at, document_types(name, sensitive)")
+      .eq("patient_id", patient.id)
+      .is("visit_id", null)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase.from("paired_devices").select("id, confirmed_at, last_seen_at").maybeSingle(),
+  ]);
+  const pairedDevice = pairedDeviceRow
+    ? {
+        id: pairedDeviceRow.id,
+        confirmedAt: pairedDeviceRow.confirmed_at,
+        lastSeenAt: pairedDeviceRow.last_seen_at,
+      }
+    : null;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
@@ -180,6 +191,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
             patientId={patient.id}
             revalidate={`/dashboard/patients/${patient.id}`}
             documentTypes={patientDocumentTypes ?? []}
+            pairedDevice={pairedDevice}
           />
         </div>
 

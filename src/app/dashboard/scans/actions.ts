@@ -6,16 +6,21 @@ import { requireRole, requireActiveTenant } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { generateScanToken, hashScanToken } from "@/lib/scan/token";
 
-export interface CreateScanSessionResult {
-  sessionId: string;
-  qrDataUrl: string;
-  scanUrl: string;
-}
+export type CreateScanSessionResult =
+  | { sessionId: string; qrDataUrl: string; scanUrl: string; pairedDevice?: false }
+  | { sessionId: string; pairedDevice: true };
 
 export async function createScanSession(input: {
   patientId: string;
   visitId?: string;
   documentTypeId: string;
+  /**
+   * When set, this session is delivered to an already-paired device
+   * instead of a fresh QR — see src/app/device/actions.ts for how the
+   * device discovers and claims it. Omitted (the default), behavior is
+   * 100% unchanged from before pairing existed.
+   */
+  pairedDeviceId?: string;
 }): Promise<CreateScanSessionResult | { error: string }> {
   const profile = requireActiveTenant(
     requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN", "RECEPTIONIST"]),
@@ -33,6 +38,12 @@ export async function createScanSession(input: {
     .eq("created_by", profile.userId)
     .eq("status", "PENDING");
 
+  // A device-assigned session's token_hash is a throwaway value never
+  // handed out to anyone -- the device gets a real, usable token only
+  // when it claims the session (claimAssignedScanSession), which
+  // rotates this hash to a freshly generated one at that moment. This
+  // keeps the "raw token only ever exists in transit, never at rest"
+  // invariant true for this path too, just claimed later than created.
   const rawToken = generateScanToken();
   const tokenHash = hashScanToken(rawToken);
 
@@ -42,6 +53,7 @@ export async function createScanSession(input: {
       patient_id: input.patientId,
       visit_id: input.visitId ?? null,
       document_type_id: input.documentTypeId,
+      paired_device_id: input.pairedDeviceId ?? null,
       token_hash: tokenHash,
     })
     .select("id")
@@ -49,6 +61,10 @@ export async function createScanSession(input: {
 
   if (error || !created) {
     return { error: "Could not start a scan session. Try again." };
+  }
+
+  if (input.pairedDeviceId) {
+    return { sessionId: created.id, pairedDevice: true };
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

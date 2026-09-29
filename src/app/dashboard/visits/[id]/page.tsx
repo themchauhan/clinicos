@@ -37,26 +37,38 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
   const balanceDue = Math.max(0, Number(visit.fee_amount) - amountPaid);
   const status = derivePaymentStatus(Number(visit.fee_amount), amountPaid);
 
-  const [{ data: requirements }, { data: visitDocumentTypes }, { data: documents }] =
-    await Promise.all([
-      supabase
-        .from("visit_document_requirements")
-        .select("id, document_type_id, document_type_name, required")
-        .eq("visit_id", visit.id),
-      supabase
-        .from("document_types")
-        .select("id, name, requires_signature")
-        .eq("scope", "VISIT")
-        .eq("active", true),
-      supabase
-        .from("documents")
-        .select(
-          "id, file_name, file_type, created_at, document_type_id, document_types(name, sensitive)",
-        )
-        .eq("visit_id", visit.id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: requirements },
+    { data: visitDocumentTypes },
+    { data: documents },
+    { data: pairedDeviceRow },
+  ] = await Promise.all([
+    supabase
+      .from("visit_document_requirements")
+      .select("id, document_type_id, document_type_name, required")
+      .eq("visit_id", visit.id),
+    supabase
+      .from("document_types")
+      .select("id, name, requires_signature")
+      .eq("scope", "VISIT")
+      .eq("active", true),
+    supabase
+      .from("documents")
+      .select(
+        "id, file_name, file_type, created_at, document_type_id, document_types(name, sensitive)",
+      )
+      .eq("visit_id", visit.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase.from("paired_devices").select("id, confirmed_at, last_seen_at").maybeSingle(),
+  ]);
+  const pairedDevice = pairedDeviceRow
+    ? {
+        id: pairedDeviceRow.id,
+        confirmedAt: pairedDeviceRow.confirmed_at,
+        lastSeenAt: pairedDeviceRow.last_seen_at,
+      }
+    : null;
 
   // A requirement is fulfilled by any document of that type attached
   // to this visit (VISIT-scope docs) OR to this patient at all
@@ -250,6 +262,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
             visitId={visit.id}
             revalidate={`/dashboard/visits/${visit.id}`}
             documentTypes={visitDocumentTypes ?? []}
+            pairedDevice={pairedDevice}
           />
         </div>
 

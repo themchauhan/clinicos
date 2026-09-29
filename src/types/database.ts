@@ -470,6 +470,7 @@ export interface Database {
           expires_at: string;
           completed_at: string | null;
           created_at: string;
+          paired_device_id: string | null;
         };
         // hospital_id and created_by both default at the database level.
         Insert: Partial<Database["public"]["Tables"]["scan_sessions"]["Row"]> & {
@@ -500,7 +501,31 @@ export interface Database {
             referencedColumns: ["id", "hospital_id"];
             isOneToOne: false;
           },
+          {
+            foreignKeyName: "scan_sessions_paired_device_id_hospital_id_fkey";
+            columns: ["paired_device_id", "hospital_id"];
+            referencedRelation: "paired_devices";
+            referencedColumns: ["id", "hospital_id"];
+            isOneToOne: false;
+          },
         ];
+      };
+      paired_devices: {
+        Row: {
+          id: string;
+          hospital_id: string;
+          created_by: string;
+          token_hash: string;
+          confirmed_at: string | null;
+          last_seen_at: string | null;
+          created_at: string;
+        };
+        // hospital_id and created_by both default at the database level.
+        Insert: Partial<Database["public"]["Tables"]["paired_devices"]["Row"]> & {
+          token_hash: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["paired_devices"]["Row"]>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

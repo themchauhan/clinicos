@@ -155,6 +155,13 @@ export default function ScanPage() {
   }
 
   if (finished) {
+    // A paired device (see src/app/device) stores its token here; if
+    // present, this /scan session was reached by claiming an assigned
+    // request rather than a fresh QR scan, so send it back to the
+    // waiting room instead of a dead-end "close this tab" -- ready for
+    // the next request without manual navigation.
+    const isPairedDevice =
+      typeof window !== "undefined" && window.localStorage.getItem("clinicos_device_token");
     return (
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-16 sm:px-6">
         <h1 className="text-2xl font-semibold tracking-tight">Done</h1>
@@ -162,8 +169,16 @@ export default function ScanPage() {
           {info.requiresSignature
             ? `Signature captured for ${info.patientName} (${info.documentTypeName}).`
             : `${pages.length} page${pages.length === 1 ? "" : "s"} uploaded for ${info.patientName} (${info.documentTypeName}).`}{" "}
-          You can close this tab.
+          {isPairedDevice ? "" : "You can close this tab."}
         </p>
+        {isPairedDevice ? (
+          <a
+            href="/device"
+            className="mt-6 w-fit rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
+          >
+            Back to waiting
+          </a>
+        ) : null}
       </main>
     );
   }
