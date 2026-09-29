@@ -87,6 +87,48 @@ describe("visits RLS", () => {
     expect(byId).toHaveLength(0);
   });
 
+  it("search_visits finds a visit by its patient's name/mobile/code", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const patient = await makeSunrisePatient(sunrise, "Search Visits Happy Path Patient");
+    await sunrise.from("patients").update({ mobile: "9876500055" }).eq("id", patient.id);
+    const visitTypeId = await sunriseOpdVisitTypeId();
+    const { data: visit } = await sunrise
+      .from("visits")
+      .insert({ patient_id: patient.id, visit_type_id: visitTypeId })
+      .select()
+      .single();
+
+    const byName = await sunrise.rpc("search_visits", { p_query: "Search Visits Happy Path" });
+    expect(byName.data?.some((v) => v.id === visit!.id)).toBe(true);
+
+    const byMobile = await sunrise.rpc("search_visits", { p_query: "9876500055" });
+    expect(byMobile.data?.some((v) => v.id === visit!.id)).toBe(true);
+
+    const byCode = await sunrise.rpc("search_visits", { p_query: patient.patient_code });
+    expect(byCode.data?.some((v) => v.id === visit!.id)).toBe(true);
+  });
+
+  it("cross-tenant: a receptionist cannot search up another hospital's visits", async () => {
+    const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
+    const clarityPatient = await makeSunrisePatient(clarity, "Clarity Search Visits Patient");
+    const { data: clarityVisitType } = await clarity
+      .from("visit_types")
+      .select("id")
+      .eq("name", "General USG")
+      .single();
+    const { data: clarityVisit } = await clarity
+      .from("visits")
+      .insert({ patient_id: clarityPatient.id, visit_type_id: clarityVisitType!.id })
+      .select()
+      .single();
+
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const { data: bySearch } = await sunrise.rpc("search_visits", {
+      p_query: "Clarity Search Visits Patient",
+    });
+    expect(bySearch?.some((v) => v.id === clarityVisit!.id)).toBe(false);
+  });
+
   it("no DELETE policy exists — visits are never hard-deleted", async () => {
     const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
     const patient = await makeSunrisePatient(sunrise, "Visit Not Deletable Patient");

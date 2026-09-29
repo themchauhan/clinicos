@@ -559,6 +559,10 @@ export interface Database {
         Args: { p_name: string; p_mobile: string | null; p_dob: string | null };
         Returns: Database["public"]["Tables"]["patients"]["Row"][];
       };
+      search_visits: {
+        Args: { p_query: string };
+        Returns: Database["public"]["Tables"]["visits"]["Row"][];
+      };
     };
   };
 }

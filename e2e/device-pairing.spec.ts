@@ -40,8 +40,11 @@ test("pair a device once, send a request to it, and disconnect", async ({ page, 
 
   const name = `E2E Device Pairing Test Patient ${Date.now()}`;
   await createPatientViaUi(page, { name });
+  const patientUrl = page.url();
 
-  // Connect a device.
+  // Connect a device from its own dedicated page (not tied to any
+  // one patient -- pairing is a hospital-wide setting).
+  await page.goto("/dashboard/devices");
   await page.getByRole("button", { name: "Connect a device" }).click();
   const pairLink = page.locator('a[href*="/device/connect#"]');
   await expect(pairLink).toBeVisible();
@@ -60,8 +63,10 @@ test("pair a device once, send a request to it, and disconnect", async ({ page, 
   // Desktop notices the confirmed pairing (polls every ~2.5s).
   await expect(page.getByText("Device connected")).toBeVisible({ timeout: 10_000 });
 
-  // Start a scan/sign request -- with a device connected, this goes
-  // straight to the paired device instead of showing a QR.
+  // Back on the patient page, start a scan/sign request -- with a
+  // device connected, this goes straight to the paired device instead
+  // of showing a QR.
+  await page.goto(patientUrl);
   await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
   await page.getByRole("button", { name: "Scan with phone" }).click();
   await expect(page.getByText("Sent to your connected device — waiting…")).toBeVisible();
@@ -84,7 +89,8 @@ test("pair a device once, send a request to it, and disconnect", async ({ page, 
   // Desktop reflects completion.
   await expect(page.getByText("Scan finished — 1 page added.")).toBeVisible({ timeout: 10_000 });
 
-  // Disconnect.
+  // Disconnect, from the dedicated devices page.
+  await page.goto("/dashboard/devices");
   await page.getByRole("button", { name: "Disconnect" }).click();
   await expect(page.getByRole("button", { name: "Connect a device" })).toBeVisible();
 

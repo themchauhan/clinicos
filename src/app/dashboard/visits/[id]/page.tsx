@@ -94,15 +94,18 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <BackLink href={`/dashboard/patients/${visit.patients!.id}`} label={visit.patients!.name} />
-      <div className="mt-3 flex items-start justify-between gap-4">
+      <BackLink href="/dashboard/visits" label="Visits" />
+      <div className="mt-3 flex items-start justify-between gap-4 border-l-4 border-amber-500 pl-4">
         <div>
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold tracking-wide text-amber-800 uppercase dark:bg-amber-950 dark:text-amber-300">
+            Visit
+          </span>
+          <p className="mt-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">
             <Link href={`/dashboard/patients/${visit.patients!.id}`} className="hover:underline">
               {visit.patients!.name} ({visit.patients!.patient_code})
             </Link>
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-amber-800 dark:text-amber-400">
             Visit #{visit.visit_number} — {visit.visit_types!.name}
           </h1>
         </div>

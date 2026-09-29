@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NavShell } from "@/components/nav-shell";
+import { Footer } from "@/components/footer";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           onSignOut={signOut}
         />
         <div className="flex flex-1 flex-col">{children}</div>
+        <Footer />
       </body>
     </html>
   );

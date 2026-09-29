@@ -73,12 +73,17 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
       <BackLink href="/dashboard/patients" label="Patients" />
-      <div className="mt-3 flex items-start justify-between gap-4">
+      <div className="mt-3 flex items-start justify-between gap-4 border-l-4 border-teal-500 pl-4">
         <div>
-          <p className="font-mono text-sm text-zinc-500 dark:text-zinc-400">
+          <span className="inline-block rounded bg-teal-100 px-1.5 py-0.5 text-xs font-semibold tracking-wide text-teal-800 uppercase dark:bg-teal-950 dark:text-teal-300">
+            Patient
+          </span>
+          <p className="mt-1.5 font-mono text-sm text-zinc-500 dark:text-zinc-400">
             {patient.patient_code}
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">{patient.name}</h1>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-teal-800 dark:text-teal-400">
+            {patient.name}
+          </h1>
         </div>
         <Link
           href={`/dashboard/patients/${patient.id}/edit`}

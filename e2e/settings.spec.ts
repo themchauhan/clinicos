@@ -21,8 +21,9 @@ test("editing a visit type's document requirements changes the checklist for new
   // hasn't enrolled a factor, so sign-in goes straight to the dashboard.
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  await page.getByRole("link", { name: "Settings", exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard\/settings$/);
+  // Settings lives in the nav's "More" dropdown -- going straight
+  // there is simpler and more robust than opening the dropdown first.
+  await page.goto("/dashboard/settings");
 
   // Add a new VISIT-scope document type.
   const docTypeName = `E2E Settings Doc Type ${Date.now()}`;
@@ -56,7 +57,7 @@ test("editing a visit type's document requirements changes the checklist for new
   await expect(page.locator("li", { hasText: docTypeName })).toContainText("(pending)");
 
   // Back to settings: relax the requirement to optional (required -> optional).
-  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await page.goto("/dashboard/settings");
   await row.getByRole("button", { name: "OPD Consultation: Required" }).click();
   await expect(row.getByRole("button", { name: "OPD Consultation: Optional" })).toBeVisible();
 

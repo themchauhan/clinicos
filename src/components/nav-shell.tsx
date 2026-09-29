@@ -4,12 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import type { ModuleType, StaffRole } from "@/types/database";
 
-const NAV_LINKS = [
+const PRIMARY_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/patients", label: "Patients" },
   { href: "/dashboard/visits", label: "Visits" },
   { href: "/dashboard/usg", label: "USG", requiresModule: "USG" as ModuleType },
   { href: "/dashboard/documents", label: "Documents" },
+] as const;
+
+// Less-frequently-used links, grouped under a single "More" dropdown
+// on desktop rather than crowding the primary nav row.
+const MORE_LINKS = [
+  {
+    href: "/dashboard/devices",
+    label: "Connect a device",
+    requiresRole: ["HOSPITAL_ADMIN", "RECEPTIONIST"] as readonly StaffRole[],
+  },
   {
     href: "/dashboard/settings",
     label: "Settings",
@@ -22,6 +32,8 @@ const NAV_LINKS = [
   },
 ] as const;
 
+type NavLink = (typeof PRIMARY_LINKS)[number] | (typeof MORE_LINKS)[number];
+
 /**
  * A link with `requiresRole`/`requiresModule` only shows once we know
  * the signed-in user's role/enabled modules — shown unconditionally
@@ -29,8 +41,8 @@ const NAV_LINKS = [
  * mirrors the pages themselves, which redirect away rather than crash
  * for a role/module that shouldn't be there in the first place.
  */
-function visibleLinks(session: NavShellSession | null | undefined) {
-  return NAV_LINKS.filter((link) => {
+function visibleLinks(session: NavShellSession | null | undefined, links: readonly NavLink[]) {
+  return links.filter((link) => {
     if (!session) return true;
     if ("requiresRole" in link && !link.requiresRole.includes(session.role)) return false;
     if ("requiresModule" in link && !session.enabledModules.includes(link.requiresModule)) {
@@ -69,6 +81,8 @@ export function NavShell({
   onSignOut?: () => void | Promise<void>;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const visibleMoreLinks = visibleLinks(session, MORE_LINKS);
 
   return (
     <header className="relative border-b border-slate-200 bg-white print:hidden">
@@ -87,7 +101,7 @@ export function NavShell({
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 sm:flex">
-          {visibleLinks(session).map((link) => (
+          {visibleLinks(session, PRIMARY_LINKS).map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -96,6 +110,45 @@ export function NavShell({
               {link.label}
             </Link>
           ))}
+
+          {visibleMoreLinks.length > 0 ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMoreOpen((open) => !open)}
+                aria-expanded={moreOpen}
+                aria-haspopup="menu"
+                className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-teal-50 hover:text-teal-800"
+              >
+                More
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                  <path d="M7 10l5 5 5-5z" />
+                </svg>
+              </button>
+              {moreOpen ? (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close menu"
+                    onClick={() => setMoreOpen(false)}
+                    className="fixed inset-0 z-40"
+                  />
+                  <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+                    {visibleMoreLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setMoreOpen(false)}
+                        className="block px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-teal-50 hover:text-teal-800"
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          ) : null}
         </nav>
 
         <div className="hidden items-center gap-3 sm:flex">
@@ -170,7 +223,7 @@ export function NavShell({
           />
           <div className="animate-slide-down absolute inset-x-0 top-full z-50 border-t border-slate-200 bg-white px-4 pb-4 shadow-lg sm:hidden">
             <nav aria-label="Primary" className="flex flex-col">
-              {visibleLinks(session).map((link) => (
+              {[...visibleLinks(session, PRIMARY_LINKS), ...visibleMoreLinks].map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

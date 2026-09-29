@@ -1,34 +1,49 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { PatientRow, PatientCard } from "@/components/patients/patient-row";
+import { PatientRow, PatientCard, type PatientRowData } from "@/components/patients/patient-row";
 import { BackLink } from "@/components/back-link";
+import { Pagination } from "@/components/pagination";
 
 export const metadata: Metadata = { title: "Patients — ClinicOS" };
+
+const PAGE_SIZE = 50;
 
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, page: pageParam } = await searchParams;
   const query = q?.trim() ?? "";
+  const page = Math.max(1, Number(pageParam) || 1);
 
   const supabase = await createClient();
-  const { data: patients } = query
-    ? await supabase.rpc("search_patients", { p_query: query })
-    : await supabase
-        .from("patients")
-        .select("*")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(50);
+  // Search results aren't paginated -- search_patients already caps
+  // itself at 50 best matches server-side (see its own migration), so
+  // a search narrow enough to matter never needs a second page.
+  let patients: PatientRowData[] | null;
+  let totalCount: number | null = null;
+  if (query) {
+    ({ data: patients } = await supabase.rpc("search_patients", { p_query: query }));
+  } else {
+    const result = await supabase
+      .from("patients")
+      .select("*", { count: "exact" })
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    patients = result.data;
+    totalCount = result.count;
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
       <BackLink href="/dashboard" label="Dashboard" />
-      <div className="mt-3 flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">Patients</h1>
+      <div className="mt-3 flex items-center justify-between gap-4 border-l-4 border-teal-500 pl-4">
+        <h1 className="text-3xl font-semibold tracking-tight text-teal-800 dark:text-teal-400">
+          Patients
+        </h1>
         <Link
           href="/dashboard/patients/new"
           className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
@@ -78,6 +93,15 @@ export default async function PatientsPage({
                 ))}
               </tbody>
             </table>
+
+            {!query && totalCount !== null ? (
+              <Pagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                totalCount={totalCount}
+                basePath="/dashboard/patients"
+              />
+            ) : null}
           </>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">

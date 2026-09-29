@@ -1,6 +1,16 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { NavShell } from "./nav-shell";
+
+// A test that calls render() more than once (to compare two sessions)
+// leaves both instances mounted -- click the most recently rendered
+// "More" button, matching how such tests already pick the latest
+// render's elements out of the accumulated DOM (e.g. getAllByRole(...)[0]
+// below, ordered newest-first by NavShell's own internal DOM order).
+function openMoreMenu() {
+  const buttons = screen.getAllByRole("button", { name: /more/i });
+  fireEvent.click(buttons[buttons.length - 1]);
+}
 
 describe("NavShell", () => {
   it("renders the product name and primary nav links", () => {
@@ -40,7 +50,7 @@ describe("NavShell", () => {
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
   });
 
-  it("hides Settings and Security from a RECEPTIONIST", () => {
+  it("hides Settings and Security from a RECEPTIONIST, but still shows Connect a device", () => {
     render(
       <NavShell
         session={{
@@ -52,12 +62,17 @@ describe("NavShell", () => {
         onSignOut={() => {}}
       />,
     );
+    openMoreMenu();
 
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Security" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Connect a device" })).toHaveAttribute(
+      "href",
+      "/dashboard/devices",
+    );
   });
 
-  it("shows Security to a HOSPITAL_ADMIN and to a SUPER_ADMIN", () => {
+  it("shows Security (in the More menu) to a HOSPITAL_ADMIN and to a SUPER_ADMIN", () => {
     render(
       <NavShell
         session={{
@@ -69,6 +84,7 @@ describe("NavShell", () => {
         onSignOut={() => {}}
       />,
     );
+    openMoreMenu();
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute(
       "href",
       "/account/security",
@@ -85,10 +101,27 @@ describe("NavShell", () => {
         onSignOut={() => {}}
       />,
     );
+    openMoreMenu();
     expect(screen.getAllByRole("link", { name: "Security" })[0]).toHaveAttribute(
       "href",
       "/account/security",
     );
+  });
+
+  it("hides Connect a device from a SUPER_ADMIN", () => {
+    render(
+      <NavShell
+        session={{
+          email: "super@platform.test",
+          role: "SUPER_ADMIN",
+          hospitalName: null,
+          enabledModules: [],
+        }}
+        onSignOut={() => {}}
+      />,
+    );
+    openMoreMenu();
+    expect(screen.queryByRole("link", { name: "Connect a device" })).not.toBeInTheDocument();
   });
 
   it("hides USG from a hospital that hasn't enabled that module", () => {
@@ -119,6 +152,7 @@ describe("NavShell", () => {
         onSignOut={() => {}}
       />,
     );
+    openMoreMenu();
 
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "USG" })).toBeInTheDocument();

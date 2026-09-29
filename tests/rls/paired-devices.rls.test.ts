@@ -51,14 +51,20 @@ describe("paired_devices RLS + resolvePairedDevice", () => {
   });
 
   it("cross-tenant: another hospital's staff cannot SELECT the row directly", async () => {
-    const { device } = await pairDevice(SEED_ACCOUNTS.sunrise.receptionist, "Sunrise General Hospital");
+    const { device } = await pairDevice(
+      SEED_ACCOUNTS.sunrise.receptionist,
+      "Sunrise General Hospital",
+    );
     const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
     const { data } = await clarity.from("paired_devices").select("*").eq("id", device.id);
     expect(data).toHaveLength(0);
   });
 
   it("cross-tenant: another hospital's staff cannot DELETE the row", async () => {
-    const { device } = await pairDevice(SEED_ACCOUNTS.sunrise.receptionist, "Sunrise General Hospital");
+    const { device } = await pairDevice(
+      SEED_ACCOUNTS.sunrise.receptionist,
+      "Sunrise General Hospital",
+    );
     const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
     await clarity.from("paired_devices").delete().eq("id", device.id);
     const stillThere = await serviceRoleClient()
@@ -70,19 +76,31 @@ describe("paired_devices RLS + resolvePairedDevice", () => {
   });
 
   it("defense in depth: resolvePairedDevice returns null if ever called with a different hospital's session client, even with the correct token", async () => {
-    const { rawToken } = await pairDevice(SEED_ACCOUNTS.sunrise.receptionist, "Sunrise General Hospital");
+    const { rawToken } = await pairDevice(
+      SEED_ACCOUNTS.sunrise.receptionist,
+      "Sunrise General Hospital",
+    );
     const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
     const resolved = await resolvePairedDevice(clarity, rawToken);
     expect(resolved).toBeNull();
   });
 
   it("a leaked token never resolves to another hospital's device no matter which hospital's row is looked up", async () => {
-    const sunrise = await pairDevice(SEED_ACCOUNTS.sunrise.receptionist, "Sunrise General Hospital");
+    const sunrise = await pairDevice(
+      SEED_ACCOUNTS.sunrise.receptionist,
+      "Sunrise General Hospital",
+    );
     const clarity = await pairDevice(SEED_ACCOUNTS.clarity.admin, "Clarity Diagnostics");
     expect(sunrise.device.hospital_id).not.toBe(clarity.device.hospital_id);
 
-    const resolvedForSunriseToken = await resolvePairedDevice(serviceRoleClient(), sunrise.rawToken);
-    const resolvedForClarityToken = await resolvePairedDevice(serviceRoleClient(), clarity.rawToken);
+    const resolvedForSunriseToken = await resolvePairedDevice(
+      serviceRoleClient(),
+      sunrise.rawToken,
+    );
+    const resolvedForClarityToken = await resolvePairedDevice(
+      serviceRoleClient(),
+      clarity.rawToken,
+    );
     expect(resolvedForSunriseToken?.hospital_id).toBe(sunrise.hospitalId);
     expect(resolvedForClarityToken?.hospital_id).toBe(clarity.hospitalId);
   });
