@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { permanentlyDeleteHospital } from "@/app/admin/actions";
+import { Spinner } from "@/components/spinner";
 
 export function DeleteHospitalForm({
   hospitalId,
@@ -46,8 +47,9 @@ export function DeleteHospitalForm({
         type="button"
         onClick={handleDelete}
         disabled={!canSubmit}
-        className="w-fit rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-40"
+        className="inline-flex w-fit items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-40"
       >
+        {pending ? <Spinner /> : null}
         {pending ? "Deleting…" : "Permanently delete this centre"}
       </button>
       {error ? (

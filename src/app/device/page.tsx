@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAssignedScanSession, claimAssignedScanSession } from "@/app/device/actions";
+import { Spinner } from "@/components/spinner";
 
 const DEVICE_TOKEN_KEY = "clinicos_device_token";
 const POLL_INTERVAL_MS = 2500;
@@ -104,8 +105,9 @@ export default function DevicePage() {
             type="button"
             onClick={handleOpen}
             disabled={opening}
-            className="w-fit rounded-md bg-teal-600 px-6 py-3 text-base font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+            className="inline-flex w-fit items-center gap-2 rounded-md bg-teal-600 px-6 py-3 text-base font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
           >
+            {opening ? <Spinner /> : null}
             {opening ? "Opening…" : "Open"}
           </button>
         </div>

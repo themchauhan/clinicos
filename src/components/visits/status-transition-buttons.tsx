@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { setVisitExaminationStatus } from "@/app/dashboard/visits/actions";
 import type { VisitStatus } from "@/types/database";
+import { Spinner } from "@/components/spinner";
 
 const NEXT_STATUS: Partial<
   Record<VisitStatus, { next: "IN_PROGRESS" | "COMPLETED"; label: string }>
@@ -61,8 +62,9 @@ export function StatusTransitionButtons({
           type="button"
           onClick={handleClick}
           disabled={pending}
-          className="rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
         >
+          {pending ? <Spinner className="h-3 w-3" /> : null}
           {pending ? "Saving…" : transition.label}
         </button>
       ) : null}

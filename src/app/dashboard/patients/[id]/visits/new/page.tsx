@@ -28,8 +28,7 @@ export default async function NewVisitPage({ params }: { params: Promise<{ id: s
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
       <BackLink href={`/dashboard/patients/${patient.id}`} label={patient.name} />
-      <p className="mt-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">{patient.name}</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">New visit</h1>
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight">New visit</h1>
       <div className="mt-8">
         <NewVisitForm
           patientId={patient.id}

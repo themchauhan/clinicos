@@ -45,14 +45,8 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                   active: dt.active,
                 }}
                 onSaved={() => setEditingId(null)}
+                onCancel={() => setEditingId(null)}
               />
-              <button
-                type="button"
-                onClick={() => setEditingId(null)}
-                className="mt-2 text-sm text-zinc-500 underline dark:text-zinc-400"
-              >
-                Cancel
-              </button>
             </div>
           ) : (
             <div key={dt.id} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
@@ -134,14 +128,8 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                       active: dt.active,
                     }}
                     onSaved={() => setEditingId(null)}
+                    onCancel={() => setEditingId(null)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(null)}
-                    className="mt-2 text-sm text-zinc-500 underline dark:text-zinc-400"
-                  >
-                    Cancel
-                  </button>
                 </td>
               </tr>
             ) : (

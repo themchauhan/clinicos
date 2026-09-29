@@ -2,15 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BackLink } from "@/components/back-link";
+import { Pagination } from "@/components/pagination";
 
 export const metadata: Metadata = { title: "Pending documents — ClinicOS" };
+
+const PAGE_SIZE = 50;
 
 /**
  * Every visit missing a required document shows up here — the safety
  * net the brief calls out explicitly: "so nothing is silently lost,
  * this is the safety net that paper alone never had."
  */
-export default async function PendingDocumentsPage() {
+export default async function PendingDocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
+
   const supabase = await createClient();
 
   const [{ data: requirements }, { data: documents }] = await Promise.all([
@@ -41,6 +51,12 @@ export default async function PendingDocumentsPage() {
     return !viaVisit && !viaPatient;
   });
 
+  // Fulfillment depends on a join across two separately-fetched tables,
+  // so pagination happens here in-memory (over the already-filtered
+  // list) rather than as a .range() on the initial query.
+  const pageStart = (page - 1) * PAGE_SIZE;
+  const pendingPage = pending.slice(pageStart, pageStart + PAGE_SIZE);
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
       <BackLink href="/dashboard" label="Dashboard" />
@@ -53,7 +69,7 @@ export default async function PendingDocumentsPage() {
       {pending.length > 0 ? (
         <>
           <div className="mt-8 flex flex-col gap-3 sm:hidden">
-            {pending.map((r) => {
+            {pendingPage.map((r) => {
               const visit = r.visits!;
               const patient = visit.patients!;
               return (
@@ -94,7 +110,7 @@ export default async function PendingDocumentsPage() {
               </tr>
             </thead>
             <tbody>
-              {pending.map((r) => {
+              {pendingPage.map((r) => {
                 const visit = r.visits!;
                 const patient = visit.patients!;
                 return (
@@ -121,6 +137,13 @@ export default async function PendingDocumentsPage() {
               })}
             </tbody>
           </table>
+
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            totalCount={pending.length}
+            basePath="/dashboard/documents"
+          />
         </>
       ) : (
         <p className="mt-8 text-sm text-zinc-500 dark:text-zinc-400">

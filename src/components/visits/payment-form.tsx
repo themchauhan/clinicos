@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { recordPayment, type RecordPaymentState } from "@/app/dashboard/visits/actions";
+import { Spinner } from "@/components/spinner";
 
 const initialState: RecordPaymentState = {};
 
@@ -12,8 +13,9 @@ function SubmitButton({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="w-fit rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+      className="inline-flex w-fit items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
     >
+      {pending ? <Spinner /> : null}
       {pending ? "Recording…" : label}
     </button>
   );

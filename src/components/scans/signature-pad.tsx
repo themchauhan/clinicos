@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Spinner } from "@/components/spinner";
 
 /**
  * Plain canvas + pointer events -- works for touch and mouse alike,
@@ -103,8 +104,9 @@ export function SignaturePad({
           type="button"
           onClick={handleSubmit}
           disabled={busy}
-          className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
         >
+          {busy ? <Spinner /> : null}
           {busy ? "Submitting…" : "Submit signature"}
         </button>
       </div>

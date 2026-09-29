@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateHospitalPlan } from "@/app/admin/actions";
+import { Spinner } from "@/components/spinner";
 
 export function HospitalPlanForm({
   hospitalId,
@@ -44,8 +45,9 @@ export function HospitalPlanForm({
       <button
         type="submit"
         disabled={pending || draft.trim() === currentPlan.trim()}
-        className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+        className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
       >
+        {pending ? <Spinner /> : null}
         {pending ? "Saving…" : "Save"}
       </button>
       {error ? (

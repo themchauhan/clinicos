@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { requestPasswordReset, type ForgotPasswordState } from "@/app/forgot-password/actions";
+import { Spinner } from "@/components/spinner";
 
 const initialState: ForgotPasswordState = {};
 
@@ -12,8 +13,9 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
     >
+      {pending ? <Spinner /> : null}
       {pending ? "Sending…" : "Send reset link"}
     </button>
   );

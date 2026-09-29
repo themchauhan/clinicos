@@ -11,6 +11,7 @@ import {
   type ScanSessionInfoResult,
 } from "@/app/scan/actions";
 import { SignaturePad } from "@/components/scans/signature-pad";
+import { Spinner } from "@/components/spinner";
 
 interface Page {
   id: string;
@@ -280,8 +281,9 @@ export default function ScanPage() {
                 type="button"
                 onClick={handleConfirm}
                 disabled={busy}
-                className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
               >
+                {busy ? <Spinner /> : null}
                 {busy ? "Uploading…" : "Use this photo"}
               </button>
               <button
@@ -320,9 +322,10 @@ export default function ScanPage() {
           type="button"
           onClick={handleFinish}
           disabled={busy}
-          className="mt-8 w-fit rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+          className="mt-8 inline-flex w-fit items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
         >
-          Finish
+          {busy ? <Spinner /> : null}
+          {busy ? "Finishing…" : "Finish"}
         </button>
       ) : null}
     </main>

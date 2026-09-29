@@ -1,9 +1,27 @@
+"use client";
+
+import { useFormStatus } from "react-dom";
 import { setDoctorStatus } from "@/app/dashboard/settings/actions";
+import { Spinner } from "@/components/spinner";
 
 export interface DoctorRow {
   id: string;
   name: string;
   active: boolean;
+}
+
+function StatusToggleButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+    >
+      {pending ? <Spinner className="h-3 w-3" /> : null}
+      {label}
+    </button>
+  );
 }
 
 export function DoctorList({ doctors }: { doctors: DoctorRow[] }) {
@@ -33,12 +51,7 @@ export function DoctorList({ doctors }: { doctors: DoctorRow[] }) {
             </div>
             <div className="mt-2 flex justify-end">
               <form action={setDoctorStatus.bind(null, doctor.id, !doctor.active)}>
-                <button
-                  type="submit"
-                  className="rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                >
-                  {doctor.active ? "Deactivate" : "Reactivate"}
-                </button>
+                <StatusToggleButton label={doctor.active ? "Deactivate" : "Reactivate"} />
               </form>
             </div>
           </div>
@@ -72,12 +85,7 @@ export function DoctorList({ doctors }: { doctors: DoctorRow[] }) {
               </td>
               <td className="py-2 text-right">
                 <form action={setDoctorStatus.bind(null, doctor.id, !doctor.active)}>
-                  <button
-                    type="submit"
-                    className="rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                  >
-                    {doctor.active ? "Deactivate" : "Reactivate"}
-                  </button>
+                  <StatusToggleButton label={doctor.active ? "Deactivate" : "Reactivate"} />
                 </form>
               </td>
             </tr>

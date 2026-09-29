@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { disableMfa } from "@/app/account/security/actions";
+import { Spinner } from "@/components/spinner";
 
 export function DisableMfaButton() {
   const [error, setError] = useState<string | null>(null);
@@ -23,8 +24,9 @@ export function DisableMfaButton() {
         type="button"
         onClick={handleClick}
         disabled={pending}
-        className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+        className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
       >
+        {pending ? <Spinner /> : null}
         {pending ? "Disabling…" : "Disable two-factor authentication"}
       </button>
       {error ? (

@@ -9,6 +9,7 @@ import {
   type PairedDeviceInfo,
   type StartDevicePairingResult,
 } from "@/app/dashboard/devices/actions";
+import { Spinner } from "@/components/spinner";
 
 const POLL_INTERVAL_MS = 2500;
 
@@ -99,9 +100,10 @@ export function ConnectedDeviceStatus({ pairedDevice }: { pairedDevice: PairedDe
           type="button"
           onClick={handleDisconnect}
           disabled={busy}
-          className="text-zinc-500 underline hover:text-zinc-700 disabled:opacity-60 dark:text-zinc-400"
+          className="inline-flex items-center gap-1.5 text-zinc-500 underline hover:text-zinc-700 disabled:opacity-60 dark:text-zinc-400"
         >
-          Disconnect
+          {busy ? <Spinner className="h-3.5 w-3.5" /> : null}
+          {busy ? "Disconnecting…" : "Disconnect"}
         </button>
       </div>
     );
@@ -113,8 +115,9 @@ export function ConnectedDeviceStatus({ pairedDevice }: { pairedDevice: PairedDe
         type="button"
         onClick={handleConnect}
         disabled={busy}
-        className="w-fit rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+        className="inline-flex w-fit items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
       >
+        {busy ? <Spinner /> : null}
         {busy ? "Starting…" : "Connect a device"}
       </button>
       {error ? (

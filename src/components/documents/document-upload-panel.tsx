@@ -11,6 +11,7 @@ import {
   type CreateScanSessionResult,
 } from "@/app/dashboard/scans/actions";
 import type { PairedDeviceInfo } from "@/app/dashboard/devices/actions";
+import { Spinner } from "@/components/spinner";
 
 const POLL_INTERVAL_MS = 2500;
 const uploadInitialState: UploadDocumentState = {};
@@ -27,8 +28,9 @@ function UploadSubmitButton({ disabled }: { disabled: boolean }) {
     <button
       type="submit"
       disabled={disabled || pending}
-      className="w-fit rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+      className="inline-flex w-fit items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
     >
+      {pending ? <Spinner /> : null}
       {pending ? "Uploading…" : "Upload"}
     </button>
   );
@@ -217,8 +219,9 @@ export function DocumentUploadPanel({
               type="button"
               onClick={() => handleStart(true)}
               disabled={starting || !documentTypeId}
-              className="w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              className="inline-flex w-fit items-center gap-2 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
             >
+              {starting ? <Spinner /> : null}
               {starting
                 ? "Starting…"
                 : done

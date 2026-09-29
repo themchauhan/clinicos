@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { permanentlyDeletePatient } from "@/app/admin/actions";
+import { Spinner } from "@/components/spinner";
 
 export function DeletePatientButton({
   patientId,
@@ -55,8 +56,9 @@ export function DeletePatientButton({
           type="button"
           onClick={handleDelete}
           disabled={!canSubmit}
-          className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-40"
         >
+          {pending ? <Spinner className="h-3 w-3" /> : null}
           {pending ? "Deleting…" : "Confirm delete"}
         </button>
         <button

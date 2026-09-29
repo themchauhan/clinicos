@@ -1,5 +1,9 @@
+"use client";
+
+import { useFormStatus } from "react-dom";
 import { setStaffStatus } from "@/app/dashboard/staff/actions";
 import type { ProfileStatus, StaffRole } from "@/types/database";
+import { Spinner } from "@/components/spinner";
 
 export interface StaffRow {
   id: string;
@@ -14,6 +18,20 @@ const ROLE_LABELS: Record<StaffRole, string> = {
   HOSPITAL_ADMIN: "Admin",
   RECEPTIONIST: "Receptionist",
 };
+
+function StatusToggleButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900"
+    >
+      {pending ? <Spinner className="h-3 w-3" /> : null}
+      {label}
+    </button>
+  );
+}
 
 export function StaffList({ staff, currentUserId }: { staff: StaffRow[]; currentUserId: string }) {
   if (staff.length === 0) {
@@ -53,12 +71,9 @@ export function StaffList({ staff, currentUserId }: { staff: StaffRow[]; current
                     member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
                   )}
                 >
-                  <button
-                    type="submit"
-                    className="rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                  >
-                    {member.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
-                  </button>
+                  <StatusToggleButton
+                    label={member.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                  />
                 </form>
               )}
             </div>
@@ -104,12 +119,9 @@ export function StaffList({ staff, currentUserId }: { staff: StaffRow[]; current
                       member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
                     )}
                   >
-                    <button
-                      type="submit"
-                      className="rounded-md border border-zinc-300 px-3 py-1 text-xs transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                    >
-                      {member.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
-                    </button>
+                    <StatusToggleButton
+                      label={member.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                    />
                   </form>
                 )}
               </td>
