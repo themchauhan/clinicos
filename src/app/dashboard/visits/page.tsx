@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { derivePaymentStatus, sumPayments } from "@/lib/visits/payment-status";
 import { BackLink } from "@/components/back-link";
 import { Pagination } from "@/components/pagination";
+import { LinkPendingSpinner } from "@/components/link-pending-spinner";
 
 export const metadata: Metadata = { title: "Visits — ClinicOS" };
 
@@ -107,6 +108,7 @@ export default async function VisitsPage({
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="font-medium">
                         {v.patients!.name} ({v.patients!.patient_code})
+                        <LinkPendingSpinner />
                       </p>
                       <p className="shrink-0 text-sm text-zinc-500 dark:text-zinc-400">
                         {v.visit_date}
@@ -151,11 +153,13 @@ export default async function VisitsPage({
                           className="hover:underline"
                         >
                           {v.patients!.name} ({v.patients!.patient_code})
+                          <LinkPendingSpinner />
                         </Link>
                       </td>
                       <td className="py-2">
                         <Link href={`/dashboard/visits/${v.id}`} className="hover:underline">
                           #{v.visit_number}
+                          <LinkPendingSpinner />
                         </Link>
                       </td>
                       <td className="py-2">{v.visit_types!.name}</td>

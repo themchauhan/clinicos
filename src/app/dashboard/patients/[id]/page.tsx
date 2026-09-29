@@ -6,6 +6,7 @@ import { derivePaymentStatus, sumPayments } from "@/lib/visits/payment-status";
 import { DocumentUploadPanel } from "@/components/documents/document-upload-panel";
 import { DocumentList } from "@/components/documents/document-list";
 import { BackLink } from "@/components/back-link";
+import { LinkPendingSpinner } from "@/components/link-pending-spinner";
 
 export const metadata: Metadata = { title: "Patient — ClinicOS" };
 
@@ -134,7 +135,10 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                     className="block rounded-lg border border-zinc-200 p-4 transition-colors hover:bg-slate-50 dark:border-zinc-800"
                   >
                     <div className="flex items-baseline justify-between gap-3">
-                      <p className="font-medium">#{v.visit_number}</p>
+                      <p className="font-medium">
+                        #{v.visit_number}
+                        <LinkPendingSpinner />
+                      </p>
                       <p className="text-sm text-zinc-500 dark:text-zinc-400">{v.visit_date}</p>
                     </div>
                     <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -170,6 +174,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                       <td className="py-2">
                         <Link href={`/dashboard/visits/${v.id}`} className="hover:underline">
                           #{v.visit_number}
+                          <LinkPendingSpinner />
                         </Link>
                       </td>
                       <td className="py-2">{v.visit_types!.name}</td>

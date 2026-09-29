@@ -1,7 +1,10 @@
 "use client";
 
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Spinner } from "@/components/spinner";
+import { LinkPendingSpinner } from "@/components/link-pending-spinner";
 
 export interface PatientRowData {
   id: string;
@@ -18,12 +21,22 @@ export interface PatientRowData {
  */
 export function PatientRow({ patient }: { patient: PatientRowData }) {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const href = `/dashboard/patients/${patient.id}`;
+
+  function handleRowClick() {
+    startTransition(() => {
+      router.push(href);
+    });
+  }
 
   return (
     <tr
-      onClick={() => router.push(href)}
-      className="cursor-pointer border-b border-zinc-100 last:border-0 hover:bg-slate-50 dark:border-zinc-900"
+      onClick={handleRowClick}
+      className={
+        "cursor-pointer border-b border-zinc-100 last:border-0 hover:bg-slate-50 dark:border-zinc-900" +
+        (pending ? " opacity-60" : "")
+      }
     >
       <td className="py-2">
         <Link
@@ -32,12 +45,15 @@ export function PatientRow({ patient }: { patient: PatientRowData }) {
           onClick={(e) => e.stopPropagation()}
         >
           {patient.patient_code}
+          <LinkPendingSpinner />
         </Link>
       </td>
       <td className="py-2">
         <Link href={href} className="hover:underline" onClick={(e) => e.stopPropagation()}>
           {patient.name}
+          <LinkPendingSpinner />
         </Link>
+        {pending ? <Spinner className="ml-1.5 inline h-3 w-3 align-[-1px]" /> : null}
       </td>
       <td className="py-2 text-zinc-600 dark:text-zinc-400">{patient.mobile ?? "—"}</td>
       <td className="py-2 text-zinc-600 dark:text-zinc-400">{patient.guardian_name ?? "—"}</td>
@@ -54,7 +70,10 @@ export function PatientCard({ patient }: { patient: PatientRowData }) {
       className="block rounded-lg border border-zinc-200 p-4 transition-colors hover:bg-slate-50 dark:border-zinc-800"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <p className="font-medium">{patient.name}</p>
+        <p className="font-medium">
+          {patient.name}
+          <LinkPendingSpinner />
+        </p>
         <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{patient.patient_code}</p>
       </div>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
