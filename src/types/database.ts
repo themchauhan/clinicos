@@ -246,6 +246,8 @@ export interface Database {
           follow_up_date: string | null;
           created_at: string;
           updated_at: string;
+          referred_by_name: string | null;
+          referred_by_hospital: string | null;
         };
         // hospital_id and visit_number both default at the database
         // level, so neither is required here (same as patients).

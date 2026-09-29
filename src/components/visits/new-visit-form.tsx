@@ -89,6 +89,30 @@ export function NewVisitForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
+        <label htmlFor="referredByName" className="text-sm font-medium">
+          Referred by (doctor)
+        </label>
+        <input
+          id="referredByName"
+          name="referredByName"
+          type="text"
+          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="referredByHospital" className="text-sm font-medium">
+          Referring hospital/clinic
+        </label>
+        <input
+          id="referredByHospital"
+          name="referredByHospital"
+          type="text"
+          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
         <label htmlFor="feeAmount" className="text-sm font-medium">
           Fee amount (₹)
         </label>

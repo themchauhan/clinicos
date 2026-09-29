@@ -72,3 +72,37 @@ test("editing a visit type's document requirements changes the checklist for new
   await page.goto(firstVisitUrl);
   await expect(page.locator("li", { hasText: docTypeName })).toContainText("(pending)");
 });
+
+test("adding a doctor makes them selectable on a new visit, deactivating removes them from that list", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(ADMIN_EMAIL);
+  await page.getByLabel("Password").fill(DEMO_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.goto("/dashboard/settings");
+  const doctorName = `E2E Settings Doctor ${Date.now()}`;
+  await page.getByLabel("Doctor name").fill(doctorName);
+  await page.getByRole("button", { name: "Add doctor" }).click();
+  await expect(page.getByText(doctorName).last()).toBeVisible();
+
+  const name = `E2E Settings Test Patient ${Date.now()}`;
+  await createPatientViaUi(page, { name });
+  await page.getByRole("link", { name: "New visit" }).click();
+  await expect(page.getByLabel("Doctor").locator(`option:has-text("${doctorName}")`)).toHaveCount(1);
+
+  // Deactivate the doctor, then confirm they no longer appear as an
+  // option on a fresh visit form (the existing .eq("active", true)
+  // filter on that page's own query already does this).
+  await page.goto("/dashboard/settings");
+  const row = page.locator("tr", { hasText: doctorName });
+  await row.getByRole("button", { name: "Deactivate" }).click();
+  await expect(row.getByRole("button", { name: "Reactivate" })).toBeVisible();
+
+  await page.goto(`/dashboard/patients`);
+  await page.getByRole("link", { name }).click();
+  await page.getByRole("link", { name: "New visit" }).click();
+  await expect(page.getByLabel("Doctor").locator(`option:has-text("${doctorName}")`)).toHaveCount(0);
+});

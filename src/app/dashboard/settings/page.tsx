@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ModuleToggle } from "@/components/settings/module-toggle";
 import { VisitTypeList } from "@/components/settings/visit-type-list";
 import { VisitTypeForm } from "@/components/settings/visit-type-form";
+import { DoctorList } from "@/components/settings/doctor-list";
+import { DoctorForm } from "@/components/settings/doctor-form";
 import { DocumentTypeList } from "@/components/settings/document-type-list";
 import { DocumentTypeForm } from "@/components/settings/document-type-form";
 import { RequirementsMatrix } from "@/components/settings/requirements-matrix";
@@ -36,11 +38,13 @@ export default async function SettingsPage() {
   const [
     { data: enabledModules },
     { data: visitTypes },
+    { data: doctors },
     { data: documentTypes },
     { data: requirements },
   ] = await Promise.all([
     supabase.from("hospital_modules").select("module"),
     supabase.from("visit_types").select("*").order("name"),
+    supabase.from("doctors").select("*").order("name"),
     supabase.from("document_types").select("*").order("name"),
     supabase
       .from("visit_type_document_requirements")
@@ -78,6 +82,16 @@ export default async function SettingsPage() {
         </div>
         <div className="mt-6">
           <VisitTypeList visitTypes={visitTypes ?? []} />
+        </div>
+      </div>
+
+      <div className="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <h2 className="text-lg font-semibold">Doctors</h2>
+        <div className="mt-4">
+          <DoctorForm />
+        </div>
+        <div className="mt-6">
+          <DoctorList doctors={doctors ?? []} />
         </div>
       </div>
 

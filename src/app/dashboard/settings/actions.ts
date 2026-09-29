@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionProfile } from "@/lib/auth/session";
-import { requireRole, requireActiveTenant } from "@/lib/auth/guards";
+import { requireRole, requireActiveTenant, AuthError } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
 import type { ModuleType, DocumentScope } from "@/types/database";
@@ -108,6 +108,54 @@ async function upsertVisitType(
   });
   revalidatePath(SETTINGS_PATH);
   return {};
+}
+
+export interface DoctorFormState {
+  error?: string;
+}
+
+export async function createDoctor(
+  _prevState: DoctorFormState,
+  formData: FormData,
+): Promise<DoctorFormState> {
+  requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) {
+    return { error: "Enter a name." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("doctors").insert({ name });
+
+  if (error) {
+    return { error: "Could not add that doctor." };
+  }
+
+  await logAudit({ action: "doctor.created", targetType: "doctor" });
+  revalidatePath(SETTINGS_PATH);
+  return {};
+}
+
+// Returns void (throws on failure) rather than {error?} so this can be
+// bound directly as a <form action={...}>, same as setStaffStatus.
+export async function setDoctorStatus(doctorId: string, active: boolean): Promise<void> {
+  requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("doctors").update({ active }).eq("id", doctorId);
+
+  if (error) {
+    throw new AuthError("Could not update that doctor.", 403);
+  }
+
+  await logAudit({
+    action: "doctor.status_changed",
+    targetType: "doctor",
+    targetId: doctorId,
+    metadata: { active },
+  });
+  revalidatePath(SETTINGS_PATH);
 }
 
 export interface DocumentTypeFormState {

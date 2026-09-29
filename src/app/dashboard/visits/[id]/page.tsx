@@ -125,6 +125,12 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
         <dt className="text-zinc-500 dark:text-zinc-400">Doctor</dt>
         <dd>{visit.doctors?.name ?? "—"}</dd>
 
+        <dt className="text-zinc-500 dark:text-zinc-400">Referred by</dt>
+        <dd>{visit.referred_by_name ?? "—"}</dd>
+
+        <dt className="text-zinc-500 dark:text-zinc-400">Referring hospital</dt>
+        <dd>{visit.referred_by_hospital ?? "—"}</dd>
+
         <dt className="text-zinc-500 dark:text-zinc-400">Status</dt>
         <dd>
           <StatusTransitionButtons visitId={visit.id} status={visit.status} />

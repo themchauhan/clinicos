@@ -25,6 +25,8 @@ export async function createVisit(
   }
   const doctorId = String(formData.get("doctorId") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  const referredByName = String(formData.get("referredByName") ?? "").trim() || null;
+  const referredByHospital = String(formData.get("referredByHospital") ?? "").trim() || null;
   const feeAmountRaw = String(formData.get("feeAmount") ?? "").trim();
   const feeAmount = feeAmountRaw ? Number(feeAmountRaw) : 0;
   const followUpDate = String(formData.get("followUpDate") ?? "").trim() || null;
@@ -41,6 +43,8 @@ export async function createVisit(
       visit_type_id: visitTypeId,
       doctor_id: doctorId,
       notes,
+      referred_by_name: referredByName,
+      referred_by_hospital: referredByHospital,
       fee_amount: feeAmount,
       follow_up_date: followUpDate,
     })

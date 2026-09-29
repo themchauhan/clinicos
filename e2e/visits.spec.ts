@@ -26,11 +26,15 @@ test("create a visit, record a partial payment, then pay the rest via the shortc
   await expect(page).toHaveURL(/\/visits\/new$/);
 
   await page.getByLabel("Visit type").selectOption({ label: "OPD Consultation" });
+  await page.getByLabel("Referred by (doctor)").fill("Dr. Referring Test");
+  await page.getByLabel("Referring hospital/clinic").fill("Test Referral Clinic");
   await page.getByLabel("Fee amount (₹)").fill("500");
   await page.getByRole("button", { name: "Create visit" }).click();
 
   await expect(page).toHaveURL(/\/dashboard\/visits\/[0-9a-f-]+$/);
   await expect(page.getByText("Unpaid — ₹0.00 of ₹500.00")).toBeVisible();
+  await expect(page.getByText("Dr. Referring Test")).toBeVisible();
+  await expect(page.getByText("Test Referral Clinic")).toBeVisible();
 
   // Partial payment.
   await page.getByLabel("Amount (₹)").fill("200");
