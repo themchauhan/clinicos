@@ -11,6 +11,7 @@ import { DocumentUploadPanel } from "@/components/documents/document-upload-pane
 import { DocumentList } from "@/components/documents/document-list";
 import { StatusTransitionButtons } from "@/components/visits/status-transition-buttons";
 import { PrintSlipButton } from "@/components/visits/print-slip-button";
+import { FormFillPanel } from "@/components/visits/form-fill-panel";
 import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Visit — ClinicOS" };
@@ -25,7 +26,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
   const { data: visit } = await supabase
     .from("visits")
     .select(
-      "*, patients(id, name, patient_code), visit_types(name), doctors(name), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
+      "*, patients(id, name, patient_code, guardian_name, address, mobile, dob, approximate_age_years, gender), visit_types(name), doctors(name, registration_no), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -43,6 +44,9 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
     { data: visitDocumentTypes },
     { data: documents },
     { data: pairedDeviceRow },
+    { data: formTemplates },
+    { data: hospitalRow },
+    { data: hospitalFormProfile },
   ] = await Promise.all([
     supabase
       .from("visit_document_requirements")
@@ -56,12 +60,22 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
     supabase
       .from("documents")
       .select(
-        "id, file_name, file_type, created_at, document_type_id, document_types(name, sensitive)",
+        "id, file_name, file_type, created_at, document_type_id, document_types(name, sensitive), form_templates(name, sensitive)",
       )
       .eq("visit_id", visit.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     supabase.from("paired_devices").select("id, confirmed_at, last_seen_at").maybeSingle(),
+    supabase
+      .from("form_templates")
+      .select("id, name, description, form_template_fields(field_key, label, input_type, display_order)")
+      .eq("active", true)
+      .order("name"),
+    supabase.from("hospitals").select("name, address").maybeSingle(),
+    supabase
+      .from("hospital_form_profile")
+      .select("centre_name, centre_address, registration_no")
+      .maybeSingle(),
   ]);
   const pairedDevice = pairedDeviceRow
     ? {
@@ -275,6 +289,53 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
             pairedDevice={pairedDevice}
           />
         </div>
+
+        {formTemplates && formTemplates.length > 0 ? (
+          <div className="mt-6">
+            <FormFillPanel
+              templates={formTemplates.map((t) => ({
+                id: t.id,
+                name: t.name,
+                description: t.description,
+              }))}
+              fieldsByTemplate={Object.fromEntries(
+                formTemplates.map((t) => [
+                  t.id,
+                  (t.form_template_fields ?? []).map((f) => ({
+                    fieldKey: f.field_key,
+                    label: f.label,
+                    inputType: f.input_type,
+                    displayOrder: f.display_order,
+                  })),
+                ]),
+              )}
+              patientId={visit.patients!.id}
+              visitId={visit.id}
+              patient={{
+                name: visit.patients!.name,
+                guardianName: visit.patients!.guardian_name,
+                address: visit.patients!.address,
+                mobile: visit.patients!.mobile,
+                dob: visit.patients!.dob,
+                approximateAgeYears: visit.patients!.approximate_age_years,
+                gender: visit.patients!.gender,
+              }}
+              hospital={{
+                name: hospitalRow?.name ?? "—",
+                address: hospitalRow?.address ?? null,
+                centreName: hospitalFormProfile?.centre_name ?? null,
+                centreAddress: hospitalFormProfile?.centre_address ?? null,
+                registrationNo: hospitalFormProfile?.registration_no ?? null,
+              }}
+              doctor={{
+                name: visit.doctors?.name ?? null,
+                registrationNo: visit.doctors?.registration_no ?? null,
+              }}
+              revalidate={`/dashboard/visits/${visit.id}`}
+              pairedDevice={pairedDevice}
+            />
+          </div>
+        ) : null}
 
         <div className="mt-6">
           <DocumentList documents={documents ?? []} />

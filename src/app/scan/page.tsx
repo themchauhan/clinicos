@@ -5,6 +5,7 @@ import {
   getScanSessionInfo,
   submitScanPage,
   submitScanSignature,
+  submitFormSignSignature,
   deleteScanPage,
   reorderScanPage,
   finishScanSession,
@@ -48,7 +49,7 @@ export default function ScanPage() {
       const result = await getScanSessionInfo(rawToken);
       if (cancelled) return;
       setInfo(result);
-      if (!("error" in result)) {
+      if (!("error" in result) && result.kind === "document") {
         setPages(result.existingPages.map((p) => ({ id: p.id, pageNo: p.pageNo })));
       }
     }
@@ -115,10 +116,13 @@ export default function ScanPage() {
   }
 
   async function handleSignatureSubmit(dataUrl: string) {
-    if (!token) return;
+    if (!token || !info || "error" in info) return;
     setBusy(true);
     setError(null);
-    const result = await submitScanSignature(token, dataUrl);
+    const result =
+      info.kind === "form"
+        ? await submitFormSignSignature(token, dataUrl)
+        : await submitScanSignature(token, dataUrl);
     setBusy(false);
     if (result.error) {
       setError(result.error);
@@ -163,14 +167,17 @@ export default function ScanPage() {
     // the next request without manual navigation.
     const isPairedDevice =
       typeof window !== "undefined" && window.localStorage.getItem("clinicos_device_token");
+    const doneMessage =
+      info.kind === "form"
+        ? `Signature captured for ${info.patientName} (${info.formTemplateName}).`
+        : info.requiresSignature
+          ? `Signature captured for ${info.patientName} (${info.documentTypeName}).`
+          : `${pages.length} page${pages.length === 1 ? "" : "s"} uploaded for ${info.patientName} (${info.documentTypeName}).`;
     return (
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-16 sm:px-6">
         <h1 className="text-2xl font-semibold tracking-tight">Done</h1>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          {info.requiresSignature
-            ? `Signature captured for ${info.patientName} (${info.documentTypeName}).`
-            : `${pages.length} page${pages.length === 1 ? "" : "s"} uploaded for ${info.patientName} (${info.documentTypeName}).`}{" "}
-          {isPairedDevice ? "" : "You can close this tab."}
+          {doneMessage} {isPairedDevice ? "" : "You can close this tab."}
         </p>
         {isPairedDevice ? (
           <a
@@ -179,6 +186,39 @@ export default function ScanPage() {
           >
             Back to waiting
           </a>
+        ) : null}
+      </main>
+    );
+  }
+
+  if (info.kind === "form") {
+    return (
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-16 sm:px-6">
+        <h1 className="text-2xl font-semibold tracking-tight">{info.formTemplateName}</h1>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          {info.patientName} — {info.hospitalName}
+        </p>
+        {info.fields.length > 0 ? (
+          <dl className="mt-6 flex flex-col gap-2 rounded-md border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+            {info.fields.map((f, i) => (
+              <div key={i} className="flex flex-col">
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">{f.label}</dt>
+                <dd className="text-zinc-900 dark:text-zinc-100">{f.value || "—"}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+        <div className="mt-6">
+          <SignaturePad
+            declarationText={info.formTemplateDescription}
+            busy={busy}
+            onSubmit={handleSignatureSubmit}
+          />
+        </div>
+        {error ? (
+          <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
         ) : null}
       </main>
     );

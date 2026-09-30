@@ -5,9 +5,19 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole, requireActiveTenant, AuthError } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
+import { validateFile } from "@/lib/documents/file-validation";
 import type { ModuleType, DocumentScope } from "@/types/database";
 
-const SETTINGS_PATH = "/dashboard/settings";
+const SIGNED_URL_TTL_SECONDS = 60;
+
+// Each settings area now lives on its own page (see
+// src/app/dashboard/settings/(sections)/*) -- revalidate the specific
+// page a change actually shows up on, not just the Overview root.
+const OVERVIEW_PATH = "/dashboard/settings";
+const VISIT_TYPES_PATH = "/dashboard/settings/visit-types";
+const DOCTORS_PATH = "/dashboard/settings/doctors";
+const DOCUMENT_TYPES_PATH = "/dashboard/settings/document-types";
+const FORMS_PATH = "/dashboard/settings/forms";
 
 export async function enableModule(module: ModuleType): Promise<{ error?: string }> {
   const profile = requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
@@ -26,7 +36,7 @@ export async function enableModule(module: ModuleType): Promise<{ error?: string
     targetType: "hospital_modules",
     metadata: { module },
   });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath(OVERVIEW_PATH);
   return {};
 }
 
@@ -45,7 +55,7 @@ export async function disableModule(module: ModuleType): Promise<{ error?: strin
     targetType: "hospital_modules",
     metadata: { module },
   });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath(OVERVIEW_PATH);
   return {};
 }
 
@@ -106,7 +116,7 @@ async function upsertVisitType(
     targetType: "visit_type",
     targetId: visitTypeId ?? undefined,
   });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath(VISIT_TYPES_PATH);
   return {};
 }
 
@@ -124,16 +134,17 @@ export async function createDoctor(
   if (!name) {
     return { error: "Enter a name." };
   }
+  const registrationNo = String(formData.get("registrationNo") ?? "").trim() || null;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("doctors").insert({ name });
+  const { error } = await supabase.from("doctors").insert({ name, registration_no: registrationNo });
 
   if (error) {
     return { error: "Could not add that doctor." };
   }
 
   await logAudit({ action: "doctor.created", targetType: "doctor" });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath(DOCTORS_PATH);
   return {};
 }
 
@@ -155,7 +166,37 @@ export async function setDoctorStatus(doctorId: string, active: boolean): Promis
     targetId: doctorId,
     metadata: { active },
   });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath(DOCTORS_PATH);
+}
+
+/**
+ * Doctors otherwise have no edit path at all (only create + active
+ * toggle) -- but a wrong registration number on a compliance form
+ * (e.g. PC&PNDT Form G) is a real risk, so this one field gets a
+ * narrow edit action rather than requiring a whole doctor to be
+ * recreated to fix a typo.
+ */
+export async function updateDoctorRegistrationNo(doctorId: string, formData: FormData): Promise<void> {
+  requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
+
+  const registrationNo = String(formData.get("registrationNo") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("doctors")
+    .update({ registration_no: registrationNo })
+    .eq("id", doctorId);
+
+  if (error) {
+    throw new AuthError("Could not update that doctor.", 403);
+  }
+
+  await logAudit({
+    action: "doctor.registration_no_updated",
+    targetType: "doctor",
+    targetId: doctorId,
+  });
+  revalidatePath(DOCTORS_PATH);
 }
 
 export interface DocumentTypeFormState {
@@ -228,7 +269,7 @@ export async function createDocumentType(
     targetType: "document_type",
     metadata: { name, version: nextVersion, superseded: priorVersions?.length ?? 0 },
   });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath(DOCUMENT_TYPES_PATH);
   return {};
 }
 
@@ -278,7 +319,7 @@ export async function updateDocumentType(
     targetType: "document_type",
     targetId: documentTypeId,
   });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath(DOCUMENT_TYPES_PATH);
   return {};
 }
 
@@ -323,6 +364,98 @@ export async function setRequirement(
     targetId: visitTypeId,
     metadata: { document_type_id: documentTypeId, required },
   });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath(DOCUMENT_TYPES_PATH);
   return {};
+}
+
+export interface HospitalFormProfileState {
+  error?: string;
+}
+
+/**
+ * Upserts the single hospital_form_profile row -- a "fact sheet" of
+ * letterhead-style facts (centre name/address override, PC&PNDT
+ * registration number) that form template fields can be sourced from
+ * instead of retyped at fill-time (see
+ * src/lib/documents/form-field-sources.ts). Deliberately not on
+ * `hospitals` itself, whose UPDATE policy is platform-admin-only.
+ */
+export async function saveHospitalFormProfile(
+  _prevState: HospitalFormProfileState,
+  formData: FormData,
+): Promise<HospitalFormProfileState> {
+  const profile = requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
+
+  const centreName = String(formData.get("centreName") ?? "").trim() || null;
+  const centreAddress = String(formData.get("centreAddress") ?? "").trim() || null;
+  const registrationNo = String(formData.get("registrationNo") ?? "").trim() || null;
+
+  const supabase = await createClient();
+
+  // The seal is optional and only re-uploaded when staff picks a new
+  // file -- a blank file input here must never clear an already-saved
+  // seal, unlike the text fields above which are fully replaced every
+  // save (a blank text field is a deliberate "clear this").
+  let sealStoragePath: string | undefined;
+  const sealFile = formData.get("seal");
+  if (sealFile instanceof File && sealFile.size > 0) {
+    const rawBuffer = Buffer.from(await sealFile.arrayBuffer());
+    const validated = validateFile(rawBuffer);
+    if ("error" in validated) {
+      return { error: validated.error };
+    }
+    if (validated.mime !== "image/png" && validated.mime !== "image/jpeg") {
+      return { error: "The seal must be a PNG or JPEG image." };
+    }
+    sealStoragePath = `${profile.hospitalId}/hospital-facts/seal.${validated.ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("documents")
+      .upload(sealStoragePath, rawBuffer, { contentType: validated.mime, upsert: true });
+    if (uploadError) {
+      return { error: "Could not upload the seal image. Try again." };
+    }
+  }
+
+  const { error } = await supabase.from("hospital_form_profile").upsert(
+    {
+      hospital_id: profile.hospitalId!,
+      centre_name: centreName,
+      centre_address: centreAddress,
+      registration_no: registrationNo,
+      ...(sealStoragePath ? { seal_storage_path: sealStoragePath } : {}),
+    },
+    { onConflict: "hospital_id" },
+  );
+
+  if (error) {
+    return { error: "Could not save these details." };
+  }
+
+  await logAudit({ action: "hospital_form_profile.updated", targetType: "hospital_form_profile" });
+  revalidatePath(FORMS_PATH);
+  return {};
+}
+
+/** Signed URL for the hospital's saved seal image, for a preview
+ * thumbnail in Settings -- same private-bucket pattern as
+ * getFormTemplateViewUrl. */
+export async function getHospitalSealViewUrl(): Promise<{ url: string } | { error: string }> {
+  requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
+
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("hospital_form_profile")
+    .select("seal_storage_path")
+    .maybeSingle();
+  if (!profile?.seal_storage_path) {
+    return { error: "No seal uploaded yet." };
+  }
+
+  const { data: signed, error } = await supabase.storage
+    .from("documents")
+    .createSignedUrl(profile.seal_storage_path, SIGNED_URL_TTL_SECONDS);
+  if (error || !signed) {
+    return { error: "Could not load the seal image." };
+  }
+  return { url: signed.signedUrl };
 }

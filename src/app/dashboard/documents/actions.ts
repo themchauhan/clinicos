@@ -94,7 +94,7 @@ export async function getDocumentViewUrl(
   const supabase = await createClient();
   const { data: doc } = await supabase
     .from("documents")
-    .select("storage_path, document_types(sensitive)")
+    .select("storage_path, document_types(sensitive), form_templates(sensitive)")
     .eq("id", documentId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -111,7 +111,7 @@ export async function getDocumentViewUrl(
     return { error: "Could not generate a view link." };
   }
 
-  if (doc.document_types?.sensitive) {
+  if (doc.document_types?.sensitive || doc.form_templates?.sensitive) {
     await logAudit({ action: "document.viewed", targetType: "document", targetId: documentId });
   }
 

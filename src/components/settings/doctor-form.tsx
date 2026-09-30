@@ -40,6 +40,18 @@ export function DoctorForm() {
           />
         </div>
 
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="doctor-registration-no" className="text-sm font-medium">
+            Registration number
+          </label>
+          <input
+            id="doctor-registration-no"
+            name="registrationNo"
+            type="text"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+          />
+        </div>
+
         <SubmitButton />
       </div>
 

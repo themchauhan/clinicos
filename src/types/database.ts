@@ -22,6 +22,7 @@ export type PaymentMode = "CASH" | "UPI" | "CARD" | "OTHER";
 export type PaymentStatus = "UNPAID" | "PARTIAL" | "PAID";
 export type DocumentScope = "PATIENT" | "VISIT";
 export type ScanSessionStatus = "PENDING" | "COMPLETED" | "CANCELLED";
+export type FormFieldInputType = "text" | "date" | "textarea";
 
 export interface Database {
   public: {
@@ -195,6 +196,7 @@ export interface Database {
           id: string;
           hospital_id: string;
           name: string;
+          registration_no: string | null;
           profile_id: string | null;
           active: boolean;
           created_at: string;
@@ -406,7 +408,12 @@ export interface Database {
           hospital_id: string;
           patient_id: string;
           visit_id: string | null;
-          document_type_id: string;
+          // Exactly one of these two is set (documents_type_xor_template
+          // check constraint) -- a document comes from a regular
+          // document_type upload/scan, or a flattened, signed
+          // form_template, never both, never neither.
+          document_type_id: string | null;
+          form_template_id: string | null;
           file_name: string;
           file_type: string;
           storage_path: string;
@@ -421,7 +428,6 @@ export interface Database {
         // hospital_id and uploaded_by both default at the database level.
         Insert: Partial<Database["public"]["Tables"]["documents"]["Row"]> & {
           patient_id: string;
-          document_type_id: string;
           file_name: string;
           file_type: string;
           storage_path: string;
@@ -458,7 +464,99 @@ export interface Database {
             referencedColumns: ["id", "hospital_id"];
             isOneToOne: false;
           },
+          {
+            foreignKeyName: "documents_form_template_id_hospital_id_fkey";
+            columns: ["form_template_id", "hospital_id"];
+            referencedRelation: "form_templates";
+            referencedColumns: ["id", "hospital_id"];
+            isOneToOne: false;
+          },
         ];
+      };
+      form_templates: {
+        Row: {
+          id: string;
+          hospital_id: string;
+          name: string;
+          description: string | null;
+          storage_path: string;
+          page_width: number;
+          page_height: number;
+          sensitive: boolean;
+          active: boolean;
+          version: number;
+          effective_from: string;
+          signature_page: number;
+          signature_x: number;
+          signature_y: number;
+          signature_width: number;
+          signature_height: number;
+          seal_page: number | null;
+          seal_x: number | null;
+          seal_y: number | null;
+          seal_width: number | null;
+          seal_height: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["form_templates"]["Row"]> & {
+          name: string;
+          storage_path: string;
+          page_width: number;
+          page_height: number;
+          signature_x: number;
+          signature_y: number;
+          signature_width: number;
+          signature_height: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["form_templates"]["Row"]>;
+        Relationships: [];
+      };
+      form_template_fields: {
+        Row: {
+          id: string;
+          hospital_id: string;
+          form_template_id: string;
+          field_key: string;
+          label: string;
+          input_type: FormFieldInputType;
+          page_number: number;
+          x: number;
+          y: number;
+          font_size: number;
+          display_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["form_template_fields"]["Row"]> & {
+          form_template_id: string;
+          field_key: string;
+          label: string;
+          x: number;
+          y: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["form_template_fields"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "form_template_fields_form_template_id_hospital_id_fkey";
+            columns: ["form_template_id", "hospital_id"];
+            referencedRelation: "form_templates";
+            referencedColumns: ["id", "hospital_id"];
+            isOneToOne: false;
+          },
+        ];
+      };
+      hospital_form_profile: {
+        Row: {
+          hospital_id: string;
+          centre_name: string | null;
+          centre_address: string | null;
+          registration_no: string | null;
+          seal_storage_path: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["hospital_form_profile"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["hospital_form_profile"]["Row"]>;
+        Relationships: [];
       };
       scan_sessions: {
         Row: {
@@ -467,7 +565,14 @@ export interface Database {
           created_by: string;
           patient_id: string;
           visit_id: string | null;
-          document_type_id: string;
+          // Exactly one of these two is set (scan_sessions_type_xor_template
+          // check constraint), same convention as documents' own
+          // document_type_id/form_template_id pair.
+          document_type_id: string | null;
+          form_template_id: string | null;
+          // Only set alongside form_template_id -- what staff already
+          // typed on the front-desk screen, carried to the phone.
+          field_values: Record<string, string> | null;
           token_hash: string;
           status: ScanSessionStatus;
           expires_at: string;
@@ -478,7 +583,6 @@ export interface Database {
         // hospital_id and created_by both default at the database level.
         Insert: Partial<Database["public"]["Tables"]["scan_sessions"]["Row"]> & {
           patient_id: string;
-          document_type_id: string;
           token_hash: string;
         };
         Update: Partial<Database["public"]["Tables"]["scan_sessions"]["Row"]>;
@@ -508,6 +612,13 @@ export interface Database {
             foreignKeyName: "scan_sessions_paired_device_id_hospital_id_fkey";
             columns: ["paired_device_id", "hospital_id"];
             referencedRelation: "paired_devices";
+            referencedColumns: ["id", "hospital_id"];
+            isOneToOne: false;
+          },
+          {
+            foreignKeyName: "scan_sessions_form_template_id_hospital_id_fkey";
+            columns: ["form_template_id", "hospital_id"];
+            referencedRelation: "form_templates";
             referencedColumns: ["id", "hospital_id"];
             isOneToOne: false;
           },

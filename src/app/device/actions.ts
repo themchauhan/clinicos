@@ -71,7 +71,7 @@ export async function getAssignedScanSession(rawToken: string): Promise<Assigned
 
   const { data: session } = await supabase
     .from("scan_sessions")
-    .select("id, patient_id, document_type_id")
+    .select("id, patient_id, document_type_id, form_template_id")
     .eq("paired_device_id", device.id)
     .eq("status", "PENDING")
     .order("created_at", { ascending: false })
@@ -84,7 +84,9 @@ export async function getAssignedScanSession(rawToken: string): Promise<Assigned
 
   const [{ data: patient }, { data: documentType }] = await Promise.all([
     supabase.from("patients").select("name").eq("id", session.patient_id).single(),
-    supabase.from("document_types").select("name").eq("id", session.document_type_id).single(),
+    session.document_type_id
+      ? supabase.from("document_types").select("name").eq("id", session.document_type_id).single()
+      : supabase.from("form_templates").select("name").eq("id", session.form_template_id!).single(),
   ]);
 
   return {

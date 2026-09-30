@@ -23,7 +23,9 @@ test("editing a visit type's document requirements changes the checklist for new
 
   // Settings lives in the nav's "More" dropdown -- going straight
   // there is simpler and more robust than opening the dropdown first.
-  await page.goto("/dashboard/settings");
+  // Document types + the requirements matrix live on their own
+  // settings page (see src/app/dashboard/settings/(sections)/document-types).
+  await page.goto("/dashboard/settings/document-types");
 
   // Add a new VISIT-scope document type.
   const docTypeName = `E2E Settings Doc Type ${Date.now()}`;
@@ -57,7 +59,7 @@ test("editing a visit type's document requirements changes the checklist for new
   await expect(page.locator("li", { hasText: docTypeName })).toContainText("(pending)");
 
   // Back to settings: relax the requirement to optional (required -> optional).
-  await page.goto("/dashboard/settings");
+  await page.goto("/dashboard/settings/document-types");
   await row.getByRole("button", { name: "OPD Consultation: Required" }).click();
   await expect(row.getByRole("button", { name: "OPD Consultation: Optional" })).toBeVisible();
 
@@ -82,7 +84,7 @@ test("adding a doctor makes them selectable on a new visit, deactivating removes
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  await page.goto("/dashboard/settings");
+  await page.goto("/dashboard/settings/doctors");
   const doctorName = `E2E Settings Doctor ${Date.now()}`;
   await page.getByLabel("Doctor name").fill(doctorName);
   await page.getByRole("button", { name: "Add doctor" }).click();
@@ -96,7 +98,7 @@ test("adding a doctor makes them selectable on a new visit, deactivating removes
   // Deactivate the doctor, then confirm they no longer appear as an
   // option on a fresh visit form (the existing .eq("active", true)
   // filter on that page's own query already does this).
-  await page.goto("/dashboard/settings");
+  await page.goto("/dashboard/settings/doctors");
   const row = page.locator("tr", { hasText: doctorName });
   await row.getByRole("button", { name: "Deactivate" }).click();
   await expect(row.getByRole("button", { name: "Reactivate" })).toBeVisible();

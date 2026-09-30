@@ -3,22 +3,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/auth/session";
 import { PrintButton } from "@/components/visits/print-button";
+import { ageInYears } from "@/lib/patients/age";
 
 export const metadata: Metadata = { title: "Slip — ClinicOS" };
-
-/** A bare age for the slip's vitals row -- distinct from the fuller
- * "dob (age N)" / "approximately N years old" wording used on the
- * patient profile page, which is too long for a compact printed row. */
-function ageLabel(dob: string | null, approximateAgeYears: number | null): string {
-  if (dob) {
-    const years = Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-    return String(years);
-  }
-  if (approximateAgeYears !== null) {
-    return `~${approximateAgeYears}`;
-  }
-  return "—";
-}
 
 /**
  * Printable OPD slip: centre header, patient name/code, date, doctor,
@@ -88,7 +75,7 @@ export default async function VisitSlipPage({ params }: { params: Promise<{ id: 
         <span>
           <span className="text-zinc-500 dark:text-zinc-400">Age: </span>
           <span className="font-medium">
-            {ageLabel(visit.patients!.dob, visit.patients!.approximate_age_years)}
+            {ageInYears(visit.patients!.dob, visit.patients!.approximate_age_years)}
           </span>
         </span>
         <span className="inline-flex items-baseline gap-1.5">

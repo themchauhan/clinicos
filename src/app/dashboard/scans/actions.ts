@@ -74,6 +74,62 @@ export async function createScanSession(input: {
   return { sessionId: created.id, qrDataUrl, scanUrl };
 }
 
+/**
+ * Same shape as createScanSession, for delivering a *filled form* to a
+ * patient's phone to sign instead of a document_type scan -- a
+ * sibling function rather than an overload so createScanSession's
+ * existing callers/behavior stay byte-for-byte unchanged.
+ */
+export async function createFormSignSession(input: {
+  patientId: string;
+  visitId?: string;
+  formTemplateId: string;
+  fieldValues: Record<string, string>;
+  pairedDeviceId?: string;
+}): Promise<CreateScanSessionResult | { error: string }> {
+  const profile = requireActiveTenant(
+    requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN", "RECEPTIONIST"]),
+  );
+
+  const supabase = await createClient();
+
+  await supabase
+    .from("scan_sessions")
+    .update({ status: "CANCELLED" })
+    .eq("created_by", profile.userId)
+    .eq("status", "PENDING");
+
+  const rawToken = generateScanToken();
+  const tokenHash = hashScanToken(rawToken);
+
+  const { data: created, error } = await supabase
+    .from("scan_sessions")
+    .insert({
+      patient_id: input.patientId,
+      visit_id: input.visitId ?? null,
+      form_template_id: input.formTemplateId,
+      field_values: input.fieldValues,
+      paired_device_id: input.pairedDeviceId ?? null,
+      token_hash: tokenHash,
+    })
+    .select("id")
+    .single();
+
+  if (error || !created) {
+    return { error: "Could not start a signing session. Try again." };
+  }
+
+  if (input.pairedDeviceId) {
+    return { sessionId: created.id, pairedDevice: true };
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const scanUrl = `${appUrl}/scan#${rawToken}`;
+  const qrDataUrl = await QRCode.toDataURL(scanUrl);
+
+  return { sessionId: created.id, qrDataUrl, scanUrl };
+}
+
 export interface ScanSessionStatusResult {
   status: "PENDING" | "COMPLETED" | "CANCELLED";
   pageCount: number;

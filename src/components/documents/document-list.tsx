@@ -6,6 +6,10 @@ export interface DocumentRow {
   file_type: string;
   created_at: string;
   document_types: { name: string; sensitive: boolean } | null;
+  // Set instead of document_types for a document produced by filling
+  // and signing a form template (see form-actions.ts) -- exactly one
+  // of the two is ever non-null.
+  form_templates?: { name: string; sensitive: boolean } | null;
 }
 
 export function DocumentList({ documents }: { documents: DocumentRow[] }) {
@@ -20,8 +24,8 @@ export function DocumentList({ documents }: { documents: DocumentRow[] }) {
           <div key={doc.id} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
             <div className="flex items-start justify-between gap-3">
               <p className="font-medium">
-                {doc.document_types?.name ?? "—"}
-                {doc.document_types?.sensitive ? (
+                {doc.document_types?.name ?? doc.form_templates?.name ?? "—"}
+                {(doc.document_types?.sensitive ?? doc.form_templates?.sensitive) ? (
                   <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                     Sensitive
                   </span>
@@ -55,8 +59,8 @@ export function DocumentList({ documents }: { documents: DocumentRow[] }) {
               className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
             >
               <td className="py-2">
-                {doc.document_types?.name ?? "—"}
-                {doc.document_types?.sensitive ? (
+                {doc.document_types?.name ?? doc.form_templates?.name ?? "—"}
+                {(doc.document_types?.sensitive ?? doc.form_templates?.sensitive) ? (
                   <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                     Sensitive
                   </span>
