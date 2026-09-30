@@ -45,6 +45,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           session={
             profile
               ? {
+                  name: profile.name,
                   email: profile.email,
                   role: profile.role,
                   hospitalName: profile.hospital?.name ?? null,

@@ -12,6 +12,11 @@ function openMoreMenu() {
   fireEvent.click(buttons[buttons.length - 1]);
 }
 
+function openUserMenu() {
+  const buttons = screen.getAllByRole("button", { name: "Account menu" });
+  fireEvent.click(buttons[buttons.length - 1]);
+}
+
 describe("NavShell", () => {
   it("renders the product name and primary nav links", () => {
     render(<NavShell />);
@@ -35,6 +40,7 @@ describe("NavShell", () => {
     render(
       <NavShell
         session={{
+          name: "Demo Admin",
           email: "admin@sunrise.test",
           role: "HOSPITAL_ADMIN",
           hospitalName: "Sunrise",
@@ -44,16 +50,23 @@ describe("NavShell", () => {
       />,
     );
 
+    // The compact trigger shows just the first name next to an avatar
+    // -- full identity and sign-out live behind it.
+    expect(screen.getByText("Demo")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
+
+    openUserMenu();
+    expect(screen.getByText("Demo Admin")).toBeInTheDocument();
     expect(screen.getByText("admin@sunrise.test")).toBeInTheDocument();
     expect(screen.getByText("Admin · Sunrise")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
   });
 
   it("hides Settings and Security from a RECEPTIONIST, but still shows Connect a device", () => {
     render(
       <NavShell
         session={{
+          name: "Demo Receptionist",
           email: "reception@sunrise.test",
           role: "RECEPTIONIST",
           hospitalName: "Sunrise",
@@ -76,6 +89,7 @@ describe("NavShell", () => {
     render(
       <NavShell
         session={{
+          name: "Demo Admin",
           email: "admin@sunrise.test",
           role: "HOSPITAL_ADMIN",
           hospitalName: "Sunrise",
@@ -93,6 +107,7 @@ describe("NavShell", () => {
     render(
       <NavShell
         session={{
+          name: "Platform Admin",
           email: "super@platform.test",
           role: "SUPER_ADMIN",
           hospitalName: null,
@@ -112,6 +127,7 @@ describe("NavShell", () => {
     render(
       <NavShell
         session={{
+          name: "Platform Admin",
           email: "super@platform.test",
           role: "SUPER_ADMIN",
           hospitalName: null,
@@ -128,6 +144,7 @@ describe("NavShell", () => {
     render(
       <NavShell
         session={{
+          name: "Demo Admin",
           email: "admin@sunrise.test",
           role: "HOSPITAL_ADMIN",
           hospitalName: "Sunrise",
@@ -144,6 +161,7 @@ describe("NavShell", () => {
     render(
       <NavShell
         session={{
+          name: "Demo Admin",
           email: "admin@wellspring.test",
           role: "HOSPITAL_ADMIN",
           hospitalName: "Wellspring",

@@ -79,3 +79,17 @@ test("warns about a likely duplicate but allows creating anyway", async ({ page 
   await expect(page).toHaveURL(/\/dashboard\/patients\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { name })).toBeVisible();
 });
+
+test("rejects a non-numeric mobile number", async ({ page }) => {
+  await login(page);
+
+  await page.goto("/dashboard/patients/new");
+  await page.getByLabel("Name", { exact: true }).fill(`E2E Invalid Mobile Patient ${Date.now()}`);
+  await page.getByLabel("Mobile").fill("abcd");
+  await page.getByRole("button", { name: "Create patient" }).click();
+
+  // The Mobile field's `pattern` blocks this via native browser
+  // constraint validation before the form ever submits, so the page
+  // never navigates away -- no patient is created either.
+  await expect(page).toHaveURL(/\/dashboard\/patients\/new$/);
+});

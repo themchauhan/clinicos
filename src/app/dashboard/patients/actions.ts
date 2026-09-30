@@ -7,6 +7,12 @@ import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
 import type { PatientGender } from "@/types/database";
 
+// Digits only, with an optional leading "+" for a country code --
+// strict enough to reject non-numeric input like "abcd" while still
+// accepting a plain 10-digit Indian mobile or an internationally
+// prefixed one (e.g. +919876500099).
+const MOBILE_PATTERN = /^\+?[0-9]{7,15}$/;
+
 interface PatientFields {
   name: string;
   mobile: string | null;
@@ -39,7 +45,15 @@ function readPatientFields(formData: FormData): PatientFields | { error: string 
     return { error: "Enter the patient's name." };
   }
 
-  const mobile = String(formData.get("mobile") ?? "").trim() || null;
+  // Strip spaces/hyphens/parens so "98765 00099" and "98765-00099"
+  // store (and duplicate-match) identically, then validate what's left.
+  const mobileRaw = String(formData.get("mobile") ?? "")
+    .trim()
+    .replace(/[\s\-()]/g, "");
+  const mobile = mobileRaw || null;
+  if (mobile && !MOBILE_PATTERN.test(mobile)) {
+    return { error: "Enter a valid mobile number (digits only)." };
+  }
   const dob = String(formData.get("dob") ?? "").trim() || null;
   const approximateAgeYearsRaw = String(formData.get("approximateAgeYears") ?? "").trim();
   const approximateAgeYears = approximateAgeYearsRaw ? Number(approximateAgeYearsRaw) : null;

@@ -21,6 +21,9 @@ test("a tenant user logs in and lands on /dashboard", async ({ page }) => {
   await login(page, TENANT_EMAIL);
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: /^Welcome back/ })).toBeVisible();
+  // Full identity (email, role, hospital) lives behind the nav's
+  // account menu -- the compact trigger only shows a first name.
+  await page.getByRole("button", { name: "Account menu" }).click();
   await expect(page.getByText(TENANT_EMAIL)).toBeVisible();
 });
 
@@ -48,6 +51,7 @@ test("signing out returns to a signed-out state", async ({ page }) => {
   await login(page, TENANT_EMAIL);
   await expect(page).toHaveURL(/\/dashboard$/);
 
+  await page.getByRole("button", { name: "Account menu" }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
