@@ -290,6 +290,7 @@ export interface Database {
           received_by: string;
           received_at: string;
           note: string | null;
+          reference_number: string | null;
           is_reversal: boolean;
           created_at: string;
         };

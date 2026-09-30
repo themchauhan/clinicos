@@ -25,6 +25,7 @@ export function PaymentForm({ visitId, balanceDue }: { visitId: string; balanceD
   const action = recordPayment.bind(null, visitId);
   const [state, formAction] = useActionState(action, initialState);
   const [amount, setAmount] = useState(balanceDue > 0 ? String(balanceDue) : "");
+  const [mode, setMode] = useState("CASH");
 
   return (
     <form action={formAction} className="flex flex-col gap-2">
@@ -52,7 +53,8 @@ export function PaymentForm({ visitId, balanceDue }: { visitId: string; balanceD
           <select
             id="mode"
             name="mode"
-            defaultValue="CASH"
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
             className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
           >
             <option value="CASH">Cash</option>
@@ -61,6 +63,20 @@ export function PaymentForm({ visitId, balanceDue }: { visitId: string; balanceD
             <option value="OTHER">Other</option>
           </select>
         </div>
+
+        {mode === "UPI" ? (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="referenceNumber" className="text-sm font-medium">
+              UPI transaction ID
+            </label>
+            <input
+              id="referenceNumber"
+              name="referenceNumber"
+              type="text"
+              className="w-48 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+            />
+          </div>
+        ) : null}
 
         {balanceDue > 0 ? (
           <button

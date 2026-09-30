@@ -5,6 +5,7 @@ import { derivePaymentStatus, sumPayments } from "@/lib/visits/payment-status";
 import { BackLink } from "@/components/back-link";
 import { Pagination } from "@/components/pagination";
 import { LinkPendingSpinner } from "@/components/link-pending-spinner";
+import { VisitRow } from "@/components/visits/visit-row";
 
 export const metadata: Metadata = { title: "Visits — ClinicOS" };
 
@@ -80,7 +81,7 @@ export default async function VisitsPage({
           type="search"
           name="q"
           defaultValue={query}
-          placeholder="Search by patient name, mobile, or patient code"
+          placeholder="Search by patient name, mobile, patient code, or UPI reference"
           aria-label="Search visits"
           className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
         />
@@ -142,31 +143,21 @@ export default async function VisitsPage({
                   const amountPaid = sumPayments(v.visit_payments);
                   const status = derivePaymentStatus(Number(v.fee_amount), amountPaid);
                   return (
-                    <tr
+                    <VisitRow
                       key={v.id}
-                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
-                    >
-                      <td className="py-2 text-zinc-600 dark:text-zinc-400">{v.visit_date}</td>
-                      <td className="py-2">
-                        <Link
-                          href={`/dashboard/patients/${v.patients!.id}`}
-                          className="hover:underline"
-                        >
-                          {v.patients!.name} ({v.patients!.patient_code})
-                          <LinkPendingSpinner />
-                        </Link>
-                      </td>
-                      <td className="py-2">
-                        <Link href={`/dashboard/visits/${v.id}`} className="hover:underline">
-                          #{v.visit_number}
-                          <LinkPendingSpinner />
-                        </Link>
-                      </td>
-                      <td className="py-2">{v.visit_types!.name}</td>
-                      <td className="py-2 text-zinc-600 dark:text-zinc-400">
-                        {STATUS_LABELS[status]}
-                      </td>
-                    </tr>
+                      visit={{
+                        id: v.id,
+                        visitDate: v.visit_date,
+                        visitNumber: v.visit_number,
+                        visitTypeName: v.visit_types!.name,
+                        paymentLabel: STATUS_LABELS[status],
+                        patient: {
+                          id: v.patients!.id,
+                          name: v.patients!.name,
+                          patientCode: v.patients!.patient_code,
+                        },
+                      }}
+                    />
                   );
                 })}
               </tbody>

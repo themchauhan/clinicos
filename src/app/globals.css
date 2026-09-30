@@ -56,3 +56,10 @@ body {
     color: #000000 !important;
   }
 }
+
+/* The OPD slip is designed for A4 (the standard size everywhere this
+   app is used), not whatever the OS/printer driver defaults to. */
+@page {
+  size: A4;
+  margin: 12mm;
+}

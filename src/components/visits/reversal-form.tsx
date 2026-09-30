@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { recordPayment, type RecordPaymentState } from "@/app/dashboard/visits/actions";
 import { Spinner } from "@/components/spinner";
@@ -25,6 +25,7 @@ function SubmitButton() {
 export function ReversalForm({ visitId }: { visitId: string }) {
   const action = recordPayment.bind(null, visitId);
   const [state, formAction] = useActionState(action, initialState);
+  const [mode, setMode] = useState("CASH");
 
   return (
     <form action={formAction} className="flex flex-col gap-2">
@@ -53,7 +54,8 @@ export function ReversalForm({ visitId }: { visitId: string }) {
           <select
             id="reversal-mode"
             name="mode"
-            defaultValue="CASH"
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
             className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
           >
             <option value="CASH">Cash</option>
@@ -62,6 +64,20 @@ export function ReversalForm({ visitId }: { visitId: string }) {
             <option value="OTHER">Other</option>
           </select>
         </div>
+
+        {mode === "UPI" ? (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="reversal-referenceNumber" className="text-sm font-medium">
+              UPI transaction ID
+            </label>
+            <input
+              id="reversal-referenceNumber"
+              name="referenceNumber"
+              type="text"
+              className="w-48 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+            />
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="reversal-note" className="text-sm font-medium">

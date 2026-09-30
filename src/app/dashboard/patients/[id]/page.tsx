@@ -7,6 +7,7 @@ import { DocumentUploadPanel } from "@/components/documents/document-upload-pane
 import { DocumentList } from "@/components/documents/document-list";
 import { BackLink } from "@/components/back-link";
 import { LinkPendingSpinner } from "@/components/link-pending-spinner";
+import { VisitRow } from "@/components/visits/visit-row";
 
 export const metadata: Metadata = { title: "Patient — ClinicOS" };
 
@@ -166,20 +167,16 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                   const amountPaid = sumPayments(v.visit_payments);
                   const status = derivePaymentStatus(Number(v.fee_amount), amountPaid);
                   return (
-                    <tr
+                    <VisitRow
                       key={v.id}
-                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
-                    >
-                      <td className="py-2 text-zinc-600 dark:text-zinc-400">{v.visit_date}</td>
-                      <td className="py-2">
-                        <Link href={`/dashboard/visits/${v.id}`} className="hover:underline">
-                          #{v.visit_number}
-                          <LinkPendingSpinner />
-                        </Link>
-                      </td>
-                      <td className="py-2">{v.visit_types!.name}</td>
-                      <td className="py-2 text-zinc-600 dark:text-zinc-400">{status}</td>
-                    </tr>
+                      visit={{
+                        id: v.id,
+                        visitDate: v.visit_date,
+                        visitNumber: v.visit_number,
+                        visitTypeName: v.visit_types!.name,
+                        paymentLabel: status,
+                      }}
+                    />
                   );
                 })}
               </tbody>

@@ -13,6 +13,15 @@ test.beforeAll(async () => {
 test("create a visit, record a partial payment, then pay the rest via the shortcut", async ({
   page,
 }) => {
+  // Stub window.print (applies to every frame, including the hidden
+  // print iframe) so PrintSlipButton's cleanup -- normally triggered
+  // by the real print dialog closing -- doesn't fire near-instantly
+  // with no real dialog to wait on, racing this test's own inspection
+  // of that iframe's content.
+  await page.addInitScript(() => {
+    window.print = () => {};
+  });
+
   await page.goto("/login");
   await page.getByLabel("Email").fill(RECEPTIONIST_EMAIL);
   await page.getByLabel("Password").fill(DEMO_PASSWORD);
@@ -49,14 +58,12 @@ test("create a visit, record a partial payment, then pay the rest via the shortc
   // No reversal form for a RECEPTIONIST.
   await expect(page.getByText("Correction (admin only)")).not.toBeVisible();
 
-  // The printable slip opens in a new tab (target="_blank") and shows
-  // the right header info.
-  const [slipPage] = await Promise.all([
-    page.waitForEvent("popup"),
-    page.getByRole("link", { name: "Print slip" }).click(),
-  ]);
-  await expect(slipPage.getByRole("heading", { name: "Sunrise General Hospital" })).toBeVisible();
-  await expect(slipPage.getByText(name)).toBeVisible();
+  // The printable slip loads into a hidden iframe (no new tab/page)
+  // and shows the right header info.
+  await page.getByRole("button", { name: "Print slip" }).click();
+  const slip = page.frameLocator('iframe[src*="/slip"]');
+  await expect(slip.getByRole("heading", { name: "Sunrise General Hospital" })).toBeAttached();
+  await expect(slip.getByText(name)).toBeAttached();
 });
 
 test("only a HOSPITAL_ADMIN can record a reversal", async ({ page }) => {
@@ -91,4 +98,36 @@ test("only a HOSPITAL_ADMIN can record a reversal", async ({ page }) => {
   // table for the same rows, so this text matches twice -- .last()
   // picks the one actually visible here.
   await expect(page.getByText("Test refund").last()).toBeVisible();
+});
+
+test("recording a UPI payment with a transaction ID shows it in history and makes the visit searchable by it", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(RECEPTIONIST_EMAIL);
+  await page.getByLabel("Password").fill(DEMO_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  const name = `E2E Visit Test Patient ${Date.now()}`;
+  await createPatientViaUi(page, { name });
+  await page.getByRole("link", { name: "New visit" }).click();
+  await page.getByLabel("Visit type").selectOption({ label: "OPD Consultation" });
+  await page.getByLabel("Fee amount (₹)").fill("400");
+  await page.getByRole("button", { name: "Create visit" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/visits\/[0-9a-f-]+$/);
+
+  // The transaction ID field only appears once UPI is selected.
+  await expect(page.getByLabel("UPI transaction ID")).not.toBeVisible();
+  await page.getByLabel("Mode").selectOption("UPI");
+  const reference = `UPIE2E${Date.now()}`;
+  await page.getByLabel("UPI transaction ID").fill(reference);
+  await page.getByLabel("Amount (₹)").fill("400");
+  await page.getByRole("button", { name: "Record payment" }).click();
+  await expect(page.getByText("Paid — ₹400.00 of ₹400.00")).toBeVisible();
+  await expect(page.getByText(reference).last()).toBeVisible();
+
+  // Findable from the Visits list by that same reference.
+  await page.goto(`/dashboard/visits?q=${encodeURIComponent(reference)}`);
+  await expect(page.getByRole("link", { name })).toBeVisible();
 });

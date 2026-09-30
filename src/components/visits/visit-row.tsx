@@ -1,0 +1,78 @@
+"use client";
+
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Spinner } from "@/components/spinner";
+import { LinkPendingSpinner } from "@/components/link-pending-spinner";
+
+export interface VisitRowData {
+  id: string;
+  visitDate: string;
+  visitNumber: number;
+  visitTypeName: string;
+  paymentLabel: string;
+  /** Omitted on the patient profile page, where the patient is already
+   * implied by context; shown as its own column (and its own link,
+   * separate from the row's own visit-detail destination) on the
+   * cross-patient Visits list. */
+  patient?: { id: string; name: string; patientCode: string };
+}
+
+/**
+ * A whole clickable/hoverable table row for a visit -- mirrors
+ * PatientRow's pattern (imperative row-level navigation via
+ * useTransition, real inner <Link>s with stopPropagation so keyboard
+ * and screen-reader users still get a proper link target, a pending
+ * spinner either way). Used by both the Visits list and the patient
+ * profile page's own Visits table, which previously only made the
+ * bare "#123" text clickable.
+ */
+export function VisitRow({ visit }: { visit: VisitRowData }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const href = `/dashboard/visits/${visit.id}`;
+
+  function handleRowClick() {
+    startTransition(() => {
+      router.push(href);
+    });
+  }
+
+  return (
+    <tr
+      onClick={handleRowClick}
+      className={
+        "cursor-pointer border-b border-zinc-100 last:border-0 hover:bg-slate-50 dark:border-zinc-900" +
+        (pending ? " opacity-60" : "")
+      }
+    >
+      <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.visitDate}</td>
+      {visit.patient ? (
+        <td className="py-2">
+          <Link
+            href={`/dashboard/patients/${visit.patient.id}`}
+            className="hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {visit.patient.name} ({visit.patient.patientCode})
+            <LinkPendingSpinner />
+          </Link>
+        </td>
+      ) : null}
+      <td className="py-2">
+        <Link
+          href={href}
+          className="hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          #{visit.visitNumber}
+          <LinkPendingSpinner />
+        </Link>
+        {pending ? <Spinner className="ml-1.5 inline h-3 w-3 align-[-1px]" /> : null}
+      </td>
+      <td className="py-2">{visit.visitTypeName}</td>
+      <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.paymentLabel}</td>
+    </tr>
+  );
+}

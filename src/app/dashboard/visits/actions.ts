@@ -88,6 +88,7 @@ export async function recordPayment(
   const amount = amountRaw ? Number(amountRaw) : NaN;
   const mode = String(formData.get("mode") ?? "").trim() as PaymentMode;
   const note = String(formData.get("note") ?? "").trim() || null;
+  const referenceNumber = String(formData.get("referenceNumber") ?? "").trim() || null;
 
   if (Number.isNaN(amount) || amount === 0) {
     return { error: "Enter a non-zero amount." };
@@ -108,6 +109,7 @@ export async function recordPayment(
     amount,
     mode,
     note,
+    reference_number: referenceNumber,
     is_reversal: isReversal,
   });
 

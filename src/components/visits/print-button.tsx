@@ -1,5 +1,9 @@
 "use client";
 
+/** Manual trigger for someone who navigated to this page directly
+ * (e.g. a bookmarked link) rather than via PrintSlipButton, which
+ * prints this same page invisibly through a hidden iframe and never
+ * lands here at all. */
 export function PrintButton() {
   return (
     <button

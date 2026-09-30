@@ -10,6 +10,7 @@ import { ReversalForm } from "@/components/visits/reversal-form";
 import { DocumentUploadPanel } from "@/components/documents/document-upload-panel";
 import { DocumentList } from "@/components/documents/document-list";
 import { StatusTransitionButtons } from "@/components/visits/status-transition-buttons";
+import { PrintSlipButton } from "@/components/visits/print-slip-button";
 import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Visit — ClinicOS" };
@@ -24,7 +25,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
   const { data: visit } = await supabase
     .from("visits")
     .select(
-      "*, patients(id, name, patient_code), visit_types(name), doctors(name), visit_payments(id, amount, mode, note, is_reversal, received_at)",
+      "*, patients(id, name, patient_code), visit_types(name), doctors(name), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -109,13 +110,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
             Visit #{visit.visit_number} — {visit.visit_types!.name}
           </h1>
         </div>
-        <Link
-          href={`/dashboard/visits/${visit.id}/slip`}
-          target="_blank"
-          className="rounded-md border border-zinc-300 px-4 py-2 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-        >
-          Print slip
-        </Link>
+        <PrintSlipButton visitId={visit.id} />
       </div>
 
       <dl className="mt-8 grid max-w-lg grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
@@ -186,6 +181,8 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
                     <dt className="text-zinc-400 dark:text-zinc-500">Mode</dt>
                     <dd>{p.mode}</dd>
+                    <dt className="text-zinc-400 dark:text-zinc-500">Reference</dt>
+                    <dd>{p.reference_number ?? "—"}</dd>
                     <dt className="text-zinc-400 dark:text-zinc-500">Note</dt>
                     <dd>{p.note ?? "—"}</dd>
                   </dl>
@@ -199,6 +196,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
                   <th className="py-2 font-medium">When</th>
                   <th className="py-2 font-medium">Amount</th>
                   <th className="py-2 font-medium">Mode</th>
+                  <th className="py-2 font-medium">Reference</th>
                   <th className="py-2 font-medium">Note</th>
                 </tr>
               </thead>
@@ -215,6 +213,9 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
                       ₹{Number(p.amount).toFixed(2)}
                     </td>
                     <td className="py-2">{p.mode}</td>
+                    <td className="py-2 text-zinc-600 dark:text-zinc-400">
+                      {p.reference_number ?? "—"}
+                    </td>
                     <td className="py-2 text-zinc-600 dark:text-zinc-400">{p.note ?? "—"}</td>
                   </tr>
                 ))}

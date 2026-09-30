@@ -108,6 +108,51 @@ describe("visits RLS", () => {
     expect(byCode.data?.some((v) => v.id === visit!.id)).toBe(true);
   });
 
+  it("search_visits finds a visit by its payment's UPI reference number", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const patient = await makeSunrisePatient(sunrise, "Search Visits Reference Patient");
+    const visitTypeId = await sunriseOpdVisitTypeId();
+    const { data: visit } = await sunrise
+      .from("visits")
+      .insert({ patient_id: patient.id, visit_type_id: visitTypeId, fee_amount: 100 })
+      .select()
+      .single();
+    await sunrise.from("visit_payments").insert({
+      visit_id: visit!.id,
+      amount: 100,
+      mode: "UPI",
+      reference_number: "UPI2026093012345",
+    });
+
+    const byReference = await sunrise.rpc("search_visits", { p_query: "UPI2026093012345" });
+    expect(byReference.data?.some((v) => v.id === visit!.id)).toBe(true);
+  });
+
+  it("cross-tenant: a receptionist cannot search up another hospital's visit by its UPI reference number", async () => {
+    const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
+    const clarityPatient = await makeSunrisePatient(clarity, "Clarity Reference Patient");
+    const { data: clarityVisitType } = await clarity
+      .from("visit_types")
+      .select("id")
+      .eq("name", "General USG")
+      .single();
+    const { data: clarityVisit } = await clarity
+      .from("visits")
+      .insert({ patient_id: clarityPatient.id, visit_type_id: clarityVisitType!.id, fee_amount: 100 })
+      .select()
+      .single();
+    await clarity.from("visit_payments").insert({
+      visit_id: clarityVisit!.id,
+      amount: 100,
+      mode: "UPI",
+      reference_number: "CLARITYREF999",
+    });
+
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const { data: bySearch } = await sunrise.rpc("search_visits", { p_query: "CLARITYREF999" });
+    expect(bySearch?.some((v) => v.id === clarityVisit!.id)).toBe(false);
+  });
+
   it("cross-tenant: a receptionist cannot search up another hospital's visits", async () => {
     const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
     const clarityPatient = await makeSunrisePatient(clarity, "Clarity Search Visits Patient");
@@ -170,6 +215,38 @@ describe("visit_payments RLS", () => {
 
     await sunrise.from("visit_payments").insert({ visit_id: visit!.id, amount: 200, mode: "UPI" });
     expect(await paidSoFar()).toBe(300); // PAID (== 300)
+  });
+
+  it("stores an optional reference_number on a payment", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const patient = await makeSunrisePatient(sunrise, "Payment Reference Patient");
+    const visitTypeId = await sunriseOpdVisitTypeId();
+    const { data: visit } = await sunrise
+      .from("visits")
+      .insert({ patient_id: patient.id, visit_type_id: visitTypeId, fee_amount: 100 })
+      .select()
+      .single();
+
+    const { data: withReference, error: withReferenceError } = await sunrise
+      .from("visit_payments")
+      .insert({
+        visit_id: visit!.id,
+        amount: 100,
+        mode: "UPI",
+        reference_number: "UPI2026093099999",
+      })
+      .select()
+      .single();
+    expect(withReferenceError).toBeNull();
+    expect(withReference?.reference_number).toBe("UPI2026093099999");
+
+    const { data: withoutReference, error: withoutReferenceError } = await sunrise
+      .from("visit_payments")
+      .insert({ visit_id: visit!.id, amount: 50, mode: "CASH" })
+      .select()
+      .single();
+    expect(withoutReferenceError).toBeNull();
+    expect(withoutReference?.reference_number).toBeNull();
   });
 
   it("a receptionist cannot record a reversal payment", async () => {
