@@ -42,6 +42,17 @@ export interface SealBoxInput {
   height: number;
 }
 
+/** Same idea as SealBoxInput, for the doctor's own saved signature
+ * image (lives on `doctors.signature_storage_path`) instead of the
+ * hospital's seal. */
+export interface DoctorSignatureBoxInput {
+  pageNumber: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface FormTemplateFormState {
   error?: string;
 }
@@ -82,11 +93,13 @@ export async function createFormTemplate(
   let fields: FormTemplateFieldInput[];
   let signature: SignatureBoxInput;
   let seal: SealBoxInput | null;
+  let doctorSignature: DoctorSignatureBoxInput | null;
   try {
     const layout = JSON.parse(String(formData.get("layout") ?? "{}"));
     fields = layout.fields;
     signature = layout.signature;
     seal = layout.seal ?? null;
+    doctorSignature = layout.doctorSignature ?? null;
     if (!Array.isArray(fields) || fields.length === 0) {
       return { error: "Place at least one field on the form." };
     }
@@ -138,6 +151,11 @@ export async function createFormTemplate(
       seal_y: seal?.y ?? null,
       seal_width: seal?.width ?? null,
       seal_height: seal?.height ?? null,
+      doctor_signature_page: doctorSignature?.pageNumber ?? null,
+      doctor_signature_x: doctorSignature?.x ?? null,
+      doctor_signature_y: doctorSignature?.y ?? null,
+      doctor_signature_width: doctorSignature?.width ?? null,
+      doctor_signature_height: doctorSignature?.height ?? null,
     })
     .select("id")
     .single();
@@ -235,11 +253,13 @@ export async function updateFormTemplateFields(
   let fields: FormTemplateFieldInput[];
   let signature: SignatureBoxInput;
   let seal: SealBoxInput | null;
+  let doctorSignature: DoctorSignatureBoxInput | null;
   try {
     const layout = JSON.parse(String(formData.get("layout") ?? "{}"));
     fields = layout.fields;
     signature = layout.signature;
     seal = layout.seal ?? null;
+    doctorSignature = layout.doctorSignature ?? null;
     if (!Array.isArray(fields) || fields.length === 0) {
       return { error: "Place at least one field on the form." };
     }
@@ -265,6 +285,11 @@ export async function updateFormTemplateFields(
       seal_y: seal?.y ?? null,
       seal_width: seal?.width ?? null,
       seal_height: seal?.height ?? null,
+      doctor_signature_page: doctorSignature?.pageNumber ?? null,
+      doctor_signature_x: doctorSignature?.x ?? null,
+      doctor_signature_y: doctorSignature?.y ?? null,
+      doctor_signature_width: doctorSignature?.width ?? null,
+      doctor_signature_height: doctorSignature?.height ?? null,
     })
     .eq("id", formTemplateId);
   if (updateError) {

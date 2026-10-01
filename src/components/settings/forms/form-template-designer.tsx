@@ -7,6 +7,7 @@ import type {
   FormTemplateFieldInput,
   SignatureBoxInput,
   SealBoxInput,
+  DoctorSignatureBoxInput,
 } from "@/app/dashboard/settings/forms/actions";
 import {
   PATIENT_FIELD_OPTIONS,
@@ -54,6 +55,7 @@ export interface FormLayout {
   fields: FormTemplateFieldInput[];
   signature: SignatureBoxInput | null;
   seal: SealBoxInput | null;
+  doctorSignature: DoctorSignatureBoxInput | null;
 }
 
 /**
@@ -75,19 +77,24 @@ export function FormTemplateDesigner({
   initialFields,
   initialSignature = null,
   initialSeal = null,
+  initialDoctorSignature = null,
 }: {
   file: File | string;
   onLayoutChange: (layout: FormLayout) => void;
   initialFields?: FormTemplateFieldInput[];
   initialSignature?: SignatureBoxInput | null;
   initialSeal?: SealBoxInput | null;
+  initialDoctorSignature?: DoctorSignatureBoxInput | null;
 }) {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageInfo, setPageInfo] = useState<PdfPageInfo | null>(null);
   const [fields, setFields] = useState<FormTemplateFieldInput[]>(initialFields ?? []);
   const [signature, setSignature] = useState<SignatureBoxInput | null>(initialSignature);
   const [seal, setSeal] = useState<SealBoxInput | null>(initialSeal);
-  const [mode, setMode] = useState<"field" | "signature" | "seal" | null>(null);
+  const [doctorSignature, setDoctorSignature] = useState<DoctorSignatureBoxInput | null>(
+    initialDoctorSignature,
+  );
+  const [mode, setMode] = useState<"field" | "signature" | "seal" | "doctorSignature" | null>(null);
   const [pendingClick, setPendingClick] = useState<PdfPoint | null>(null);
   const [pendingSource, setPendingSource] = useState<string>(CUSTOM_SOURCE);
   const [pendingKey, setPendingKey] = useState("");
@@ -113,22 +120,35 @@ export function FormTemplateDesigner({
     nextFields: FormTemplateFieldInput[],
     nextSignature: SignatureBoxInput | null,
     nextSeal: SealBoxInput | null,
+    nextDoctorSignature: DoctorSignatureBoxInput | null,
   ) {
-    onLayoutChange({ fields: nextFields, signature: nextSignature, seal: nextSeal });
+    onLayoutChange({
+      fields: nextFields,
+      signature: nextSignature,
+      seal: nextSeal,
+      doctorSignature: nextDoctorSignature,
+    });
   }
 
   function handleClickAt(point: PdfPoint) {
     if (mode === "signature") {
       const box: SignatureBoxInput = { pageNumber, x: point.xPt, y: point.yPt, width: 160, height: 50 };
       setSignature(box);
-      emit(fields, box, seal);
+      emit(fields, box, seal, doctorSignature);
       setMode(null);
       return;
     }
     if (mode === "seal") {
       const box: SealBoxInput = { pageNumber, x: point.xPt, y: point.yPt, width: 120, height: 60 };
       setSeal(box);
-      emit(fields, signature, box);
+      emit(fields, signature, box, doctorSignature);
+      setMode(null);
+      return;
+    }
+    if (mode === "doctorSignature") {
+      const box: DoctorSignatureBoxInput = { pageNumber, x: point.xPt, y: point.yPt, width: 160, height: 50 };
+      setDoctorSignature(box);
+      emit(fields, signature, seal, box);
       setMode(null);
       return;
     }
@@ -157,7 +177,7 @@ export function FormTemplateDesigner({
       },
     ];
     setFields(next);
-    emit(next, signature, seal);
+    emit(next, signature, seal, doctorSignature);
     cancelPendingField();
   }
 
@@ -173,17 +193,22 @@ export function FormTemplateDesigner({
   function removeField(index: number) {
     const next = fields.filter((_, i) => i !== index);
     setFields(next);
-    emit(next, signature, seal);
+    emit(next, signature, seal, doctorSignature);
   }
 
   function removeSignature() {
     setSignature(null);
-    emit(fields, null, seal);
+    emit(fields, null, seal, doctorSignature);
   }
 
   function removeSeal() {
     setSeal(null);
-    emit(fields, signature, null);
+    emit(fields, signature, null, doctorSignature);
+  }
+
+  function removeDoctorSignature() {
+    setDoctorSignature(null);
+    emit(fields, signature, seal, null);
   }
 
   return (
@@ -263,6 +288,19 @@ export function FormTemplateDesigner({
                           );
                         })()
                       : null}
+                    {doctorSignature && doctorSignature.pageNumber === pageNumber
+                      ? (() => {
+                          const pos = pdfPointToCanvasPixel(doctorSignature, pageInfo, renderedWidthPx);
+                          return (
+                            <span
+                              className="pointer-events-none absolute -translate-y-full rounded bg-blue-600/90 px-1.5 py-0.5 text-[11px] font-medium text-white"
+                              style={{ left: pos.left, top: pos.top }}
+                            >
+                              Doctor&apos;s signature
+                            </span>
+                          );
+                        })()
+                      : null}
                   </>
                 );
               })()
@@ -311,6 +349,22 @@ export function FormTemplateDesigner({
             }
           >
             {mode === "seal" ? "Click the form to place the seal…" : "+ Place seal (optional)"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              cancelPendingField();
+              setMode(mode === "doctorSignature" ? null : "doctorSignature");
+            }}
+            className={
+              mode === "doctorSignature"
+                ? "rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white"
+                : "rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
+            }
+          >
+            {mode === "doctorSignature"
+              ? "Click the form to place the doctor's signature…"
+              : "+ Place doctor's signature (optional)"}
           </button>
         </div>
 
@@ -469,6 +523,25 @@ export function FormTemplateDesigner({
             <button
               type="button"
               onClick={removeSeal}
+              className="text-xs text-red-600 underline dark:text-red-400"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Not placed.</p>
+        )}
+
+        <p className="mt-3 text-sm font-medium">Doctor&apos;s signature (optional)</p>
+        {doctorSignature ? (
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span>
+              Page {doctorSignature.pageNumber}, ({Math.round(doctorSignature.x)},{" "}
+              {Math.round(doctorSignature.y)})
+            </span>
+            <button
+              type="button"
+              onClick={removeDoctorSignature}
               className="text-xs text-red-600 underline dark:text-red-400"
             >
               Remove

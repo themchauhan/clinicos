@@ -9,6 +9,7 @@ import {
   type FormTemplateFieldInput,
   type SignatureBoxInput,
   type SealBoxInput,
+  type DoctorSignatureBoxInput,
 } from "@/app/dashboard/settings/forms/actions";
 import { FormTemplateDesigner, type FormLayout } from "@/components/settings/forms/form-template-designer";
 import { Spinner } from "@/components/spinner";
@@ -35,12 +36,14 @@ export function EditFormTemplateForm({
   initialFields,
   initialSignature,
   initialSeal,
+  initialDoctorSignature,
 }: {
   templateId: string;
   pdfUrl: string;
   initialFields: FormTemplateFieldInput[];
   initialSignature: SignatureBoxInput;
   initialSeal: SealBoxInput | null;
+  initialDoctorSignature: DoctorSignatureBoxInput | null;
 }) {
   const [state, formAction] = useActionState(
     updateFormTemplateFields.bind(null, templateId),
@@ -50,6 +53,7 @@ export function EditFormTemplateForm({
     fields: initialFields,
     signature: initialSignature,
     seal: initialSeal,
+    doctorSignature: initialDoctorSignature,
   });
   const router = useRouter();
 
@@ -71,6 +75,7 @@ export function EditFormTemplateForm({
           initialFields={initialFields}
           initialSignature={initialSignature}
           initialSeal={initialSeal}
+          initialDoctorSignature={initialDoctorSignature}
         />
       </div>
 

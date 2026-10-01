@@ -42,15 +42,18 @@ export interface SignaturePlacement {
   signaturePng: Buffer;
 }
 
-export interface SealPlacement {
+/** Shared shape for any optional, pre-saved image stamped onto a form
+ * -- the hospital seal and the doctor's saved signature are both
+ * exactly this, just sourced from a different table. */
+export interface StampPlacement {
   pageNumber: number;
   x: number;
   y: number;
   width: number;
   height: number;
-  /** A photographed/scanned stamp -- PNG or JPEG, unlike the
+  /** A photographed/scanned image -- PNG or JPEG, unlike the
    * signature pad's always-PNG canvas export. */
-  sealImage: Buffer;
+  image: Buffer;
 }
 
 /** Embeds and draws an image box -- shared by the mandatory patient
@@ -106,7 +109,11 @@ export async function flattenFormTemplate(input: {
   /** Omitted when the template has no seal box, or the hospital
    * hasn't uploaded a seal yet -- graceful skip, same as any other
    * unset auto-fill source in this feature. */
-  seal?: SealPlacement;
+  seal?: StampPlacement;
+  /** Omitted when the template has no doctor-signature box, the visit
+   * has no doctor assigned, or that doctor hasn't saved a signature
+   * yet -- same graceful skip as the seal. */
+  doctorSignature?: StampPlacement;
 }): Promise<Buffer> {
   const pdfDoc = await PDFDocument.load(input.blankPdf);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -122,11 +129,10 @@ export async function flattenFormTemplate(input: {
     await drawImagePlacement(pdfDoc, signaturePage, input.signature, input.signature.signaturePng);
   }
 
-  if (input.seal) {
-    const sealPage = pages[input.seal.pageNumber - 1];
-    if (sealPage) {
-      await drawImagePlacement(pdfDoc, sealPage, input.seal, input.seal.sealImage);
-    }
+  for (const stamp of [input.seal, input.doctorSignature]) {
+    if (!stamp) continue;
+    const page = pages[stamp.pageNumber - 1];
+    if (page) await drawImagePlacement(pdfDoc, page, stamp, stamp.image);
   }
 
   return Buffer.from(await pdfDoc.save());

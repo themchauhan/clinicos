@@ -84,6 +84,17 @@ export default async function EditFormTemplatePage({ params }: { params: Promise
                 }
               : null
           }
+          initialDoctorSignature={
+            template.doctor_signature_page
+              ? {
+                  pageNumber: template.doctor_signature_page,
+                  x: template.doctor_signature_x!,
+                  y: template.doctor_signature_y!,
+                  width: template.doctor_signature_width!,
+                  height: template.doctor_signature_height!,
+                }
+              : null
+          }
         />
       </div>
     </main>

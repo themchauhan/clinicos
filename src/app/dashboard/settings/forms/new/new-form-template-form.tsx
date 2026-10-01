@@ -29,7 +29,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 export function NewFormTemplateForm() {
   const [state, formAction] = useActionState(createFormTemplate, initialState);
   const [file, setFile] = useState<File | null>(null);
-  const [layout, setLayout] = useState<FormLayout>({ fields: [], signature: null, seal: null });
+  const [layout, setLayout] = useState<FormLayout>({ fields: [], signature: null, seal: null, doctorSignature: null });
   const router = useRouter();
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export function NewFormTemplateForm() {
           required
           onChange={(e) => {
             setFile(e.target.files?.[0] ?? null);
-            setLayout({ fields: [], signature: null, seal: null });
+            setLayout({ fields: [], signature: null, seal: null, doctorSignature: null });
           }}
           className="text-sm file:mr-3 file:rounded-md file:border file:border-zinc-300 file:bg-transparent file:px-3 file:py-1.5 file:text-sm dark:file:border-zinc-700"
         />

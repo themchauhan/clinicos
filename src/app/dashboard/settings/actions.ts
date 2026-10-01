@@ -459,3 +459,77 @@ export async function getHospitalSealViewUrl(): Promise<{ url: string } | { erro
   }
   return { url: signed.signedUrl };
 }
+
+/**
+ * A doctor's own saved signature image -- same idea as the hospital
+ * seal (saveHospitalFormProfile above), scoped per doctor instead of
+ * per hospital, so forms that place a "Doctor's signature" box can
+ * stamp it automatically without the doctor signing each one by hand.
+ */
+export async function uploadDoctorSignature(doctorId: string, formData: FormData): Promise<void> {
+  const profile = requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
+
+  const file = formData.get("signature");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new AuthError("Choose a signature image to upload.", 403);
+  }
+
+  const rawBuffer = Buffer.from(await file.arrayBuffer());
+  const validated = validateFile(rawBuffer);
+  if ("error" in validated) {
+    throw new AuthError(validated.error, 403);
+  }
+  if (validated.mime !== "image/png" && validated.mime !== "image/jpeg") {
+    throw new AuthError("The signature must be a PNG or JPEG image.", 403);
+  }
+
+  const supabase = await createClient();
+  const signatureStoragePath = `${profile.hospitalId}/doctors/${doctorId}/signature.${validated.ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from("documents")
+    .upload(signatureStoragePath, rawBuffer, { contentType: validated.mime, upsert: true });
+  if (uploadError) {
+    throw new AuthError("Could not upload the signature image. Try again.", 403);
+  }
+
+  const { error } = await supabase
+    .from("doctors")
+    .update({ signature_storage_path: signatureStoragePath })
+    .eq("id", doctorId);
+  if (error) {
+    throw new AuthError("Could not save that doctor.", 403);
+  }
+
+  await logAudit({
+    action: "doctor.signature_updated",
+    targetType: "doctor",
+    targetId: doctorId,
+  });
+  revalidatePath(DOCTORS_PATH);
+}
+
+/** Signed URL for a doctor's saved signature image, for a preview
+ * thumbnail in Settings -- same pattern as getHospitalSealViewUrl. */
+export async function getDoctorSignatureViewUrl(
+  doctorId: string,
+): Promise<{ url: string } | { error: string }> {
+  requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
+
+  const supabase = await createClient();
+  const { data: doctor } = await supabase
+    .from("doctors")
+    .select("signature_storage_path")
+    .eq("id", doctorId)
+    .maybeSingle();
+  if (!doctor?.signature_storage_path) {
+    return { error: "No signature uploaded yet." };
+  }
+
+  const { data: signed, error } = await supabase.storage
+    .from("documents")
+    .createSignedUrl(doctor.signature_storage_path, SIGNED_URL_TTL_SECONDS);
+  if (error || !signed) {
+    return { error: "Could not load the signature image." };
+  }
+  return { url: signed.signedUrl };
+}

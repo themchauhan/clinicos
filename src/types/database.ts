@@ -197,6 +197,7 @@ export interface Database {
           hospital_id: string;
           name: string;
           registration_no: string | null;
+          signature_storage_path: string | null;
           profile_id: string | null;
           active: boolean;
           created_at: string;
@@ -496,6 +497,11 @@ export interface Database {
           seal_y: number | null;
           seal_width: number | null;
           seal_height: number | null;
+          doctor_signature_page: number | null;
+          doctor_signature_x: number | null;
+          doctor_signature_y: number | null;
+          doctor_signature_width: number | null;
+          doctor_signature_height: number | null;
           created_at: string;
           updated_at: string;
         };

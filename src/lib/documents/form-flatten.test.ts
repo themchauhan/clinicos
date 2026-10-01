@@ -100,7 +100,7 @@ describe("flattenFormTemplate", () => {
       blankPdf,
       fields: [],
       signature: { pageNumber: 1, x: 50, y: 100, width: 150, height: 50, signaturePng },
-      seal: { pageNumber: 1, x: 300, y: 100, width: 60, height: 60, sealImage: sealPng },
+      seal: { pageNumber: 1, x: 300, y: 100, width: 60, height: 60, image: sealPng },
     });
     const withoutSeal = await flattenFormTemplate({
       blankPdf,
@@ -123,7 +123,7 @@ describe("flattenFormTemplate", () => {
       blankPdf,
       fields: [],
       signature: { pageNumber: 1, x: 50, y: 100, width: 150, height: 50, signaturePng },
-      seal: { pageNumber: 1, x: 300, y: 100, width: 60, height: 60, sealImage: sealJpeg },
+      seal: { pageNumber: 1, x: 300, y: 100, width: 60, height: 60, image: sealJpeg },
     });
 
     const reloaded = await PDFDocument.load(result);
@@ -140,8 +140,33 @@ describe("flattenFormTemplate", () => {
         blankPdf,
         fields: [],
         signature: { pageNumber: 1, x: 50, y: 100, width: 150, height: 50, signaturePng },
-        seal: { pageNumber: 9, x: 0, y: 0, width: 10, height: 10, sealImage: sealPng },
+        seal: { pageNumber: 9, x: 0, y: 0, width: 10, height: 10, image: sealPng },
       }),
     ).resolves.toBeInstanceOf(Buffer);
+  });
+
+  it("draws the patient signature, the hospital seal, and the doctor's own saved signature all at once", async () => {
+    const blankPdf = await makeBlankPdf(1);
+    const signaturePng = await makeSignaturePng();
+    const sealPng = await makeSignaturePng();
+    const doctorSignaturePng = await makeSignaturePng();
+
+    const withAllThree = await flattenFormTemplate({
+      blankPdf,
+      fields: [],
+      signature: { pageNumber: 1, x: 50, y: 100, width: 150, height: 50, signaturePng },
+      seal: { pageNumber: 1, x: 300, y: 100, width: 60, height: 60, image: sealPng },
+      doctorSignature: { pageNumber: 1, x: 400, y: 300, width: 160, height: 50, image: doctorSignaturePng },
+    });
+    const signatureOnly = await flattenFormTemplate({
+      blankPdf,
+      fields: [],
+      signature: { pageNumber: 1, x: 50, y: 100, width: 150, height: 50, signaturePng },
+    });
+
+    expect(await PDFDocument.load(withAllThree)).toBeTruthy();
+    // Three embedded images makes the file measurably bigger than the
+    // signature-only flatten of the same blank PDF.
+    expect(withAllThree.byteLength).toBeGreaterThan(signatureOnly.byteLength);
   });
 });

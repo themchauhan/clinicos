@@ -21,6 +21,7 @@ export default async function DoctorsSettingsPage() {
             id: d.id,
             name: d.name,
             registrationNo: d.registration_no,
+            hasSignature: Boolean(d.signature_storage_path),
             active: d.active,
           }))}
         />

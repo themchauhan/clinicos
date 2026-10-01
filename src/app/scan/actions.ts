@@ -7,7 +7,7 @@ import { validateFile } from "@/lib/documents/file-validation";
 import { stripExifIfImage } from "@/lib/documents/strip-exif";
 import { logAuditFromServiceRole } from "@/lib/audit/log";
 import { compositeSignatureWithDeclaration } from "@/lib/documents/signature-composite";
-import { flattenFormTemplate, type SealPlacement } from "@/lib/documents/form-flatten";
+import { flattenFormTemplate, type StampPlacement } from "@/lib/documents/form-flatten";
 
 // Nothing in this file trusts a Supabase Auth session — there isn't
 // one. The raw token from the QR/link is the only credential; every
@@ -346,7 +346,7 @@ export async function submitFormSignSignature(
   // Optional: same graceful-skip rule as the same-device path in
   // src/app/dashboard/visits/form-actions.ts -- only drawn when both
   // the template has a seal box and the hospital has uploaded a seal.
-  let seal: SealPlacement | undefined;
+  let seal: StampPlacement | undefined;
   if (template.seal_page) {
     const { data: hospitalProfile } = await supabase
       .from("hospital_form_profile")
@@ -364,8 +364,41 @@ export async function submitFormSignSignature(
           y: template.seal_y!,
           width: template.seal_width!,
           height: template.seal_height!,
-          sealImage: Buffer.from(await sealFile.arrayBuffer()),
+          image: Buffer.from(await sealFile.arrayBuffer()),
         };
+      }
+    }
+  }
+
+  // Same graceful-skip rule, for the visit's assigned doctor's own
+  // saved signature image instead of the hospital's seal.
+  let doctorSignature: StampPlacement | undefined;
+  if (template.doctor_signature_page && session.visit_id) {
+    const { data: visit } = await supabase
+      .from("visits")
+      .select("doctor_id")
+      .eq("id", session.visit_id)
+      .maybeSingle();
+    if (visit?.doctor_id) {
+      const { data: doctor } = await supabase
+        .from("doctors")
+        .select("signature_storage_path")
+        .eq("id", visit.doctor_id)
+        .maybeSingle();
+      if (doctor?.signature_storage_path) {
+        const { data: signatureFile } = await supabase.storage
+          .from("documents")
+          .download(doctor.signature_storage_path);
+        if (signatureFile) {
+          doctorSignature = {
+            pageNumber: template.doctor_signature_page,
+            x: template.doctor_signature_x!,
+            y: template.doctor_signature_y!,
+            width: template.doctor_signature_width!,
+            height: template.doctor_signature_height!,
+            image: Buffer.from(await signatureFile.arrayBuffer()),
+          };
+        }
       }
     }
   }
@@ -389,6 +422,7 @@ export async function submitFormSignSignature(
       signaturePng,
     },
     seal,
+    doctorSignature,
   });
 
   const sha256 = createHash("sha256").update(flattened).digest("hex");
