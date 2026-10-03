@@ -41,7 +41,7 @@ export default async function EditFormTemplatePage({ params }: { params: Promise
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 py-16 sm:px-6">
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
       <BackLink href="/dashboard/settings/forms" label="Forms" />
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">Edit fields: {template.name}</h1>
       <p className="mt-2 max-w-xl text-sm text-zinc-600 dark:text-zinc-400">

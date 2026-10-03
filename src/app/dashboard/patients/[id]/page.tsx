@@ -45,11 +45,11 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
     supabase
       .from("visits")
       .select(
-        "id, visit_number, visit_date, status, fee_amount, visit_types(name), visit_payments(amount)",
+        "id, token_number, visit_date, status, fee_amount, visit_types(name), visit_payments(amount)",
       )
       .eq("patient_id", patient.id)
       .order("visit_date", { ascending: false })
-      .order("visit_number", { ascending: false }),
+      .order("token_number", { ascending: false }),
     supabase
       .from("document_types")
       .select("id, name, requires_signature")
@@ -137,7 +137,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="font-medium">
-                        #{v.visit_number}
+                        #{v.token_number}
                         <LinkPendingSpinner />
                       </p>
                       <p className="text-sm text-zinc-500 dark:text-zinc-400">{v.visit_date}</p>
@@ -157,7 +157,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
               <thead>
                 <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                   <th className="py-2 font-medium">Date</th>
-                  <th className="py-2 font-medium">Visit</th>
+                  <th className="py-2 font-medium">Token</th>
                   <th className="py-2 font-medium">Type</th>
                   <th className="py-2 font-medium">Payment</th>
                 </tr>
@@ -172,7 +172,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                       visit={{
                         id: v.id,
                         visitDate: v.visit_date,
-                        visitNumber: v.visit_number,
+                        tokenNumber: v.token_number,
                         visitTypeName: v.visit_types!.name,
                         paymentLabel: status,
                       }}

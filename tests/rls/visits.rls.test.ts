@@ -19,6 +19,23 @@ async function sunriseOpdVisitTypeId(): Promise<string> {
   return data.id;
 }
 
+/** A calendar date no visit in this hospital has used yet, so token
+ * assertions are exact (1, 2, ...) however many times the suite has run
+ * against this database. Deliberately far in the PAST so these leftover
+ * test rows sort to the bottom of every visit list, never the top. */
+async function unusedVisitDate(hospitalId: string): Promise<string> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const date = `${1000 + Math.floor(Math.random() * 800)}-${String(1 + Math.floor(Math.random() * 12)).padStart(2, "0")}-${String(1 + Math.floor(Math.random() * 28)).padStart(2, "0")}`;
+    const { count } = await serviceRoleClient()
+      .from("visits")
+      .select("id", { count: "exact", head: true })
+      .eq("hospital_id", hospitalId)
+      .eq("visit_date", date);
+    if (!count) return date;
+  }
+  throw new Error("could not find an unused visit date");
+}
+
 describe("visits RLS", () => {
   it("happy path: create, view, and list a visit linked to the correct patient and hospital", async () => {
     const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
@@ -45,6 +62,108 @@ describe("visits RLS", () => {
 
     const { data: list } = await sunrise.from("visits").select("*").eq("patient_id", patient.id);
     expect(list?.some((v) => v.id === visit!.id)).toBe(true);
+  });
+
+  it("token numbers count 1, 2, 3 within a day and restart at 1 on a new day, without touching visit_number", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const patient = await makeSunrisePatient(sunrise, "Token Sequence Patient");
+    const visitTypeId = await sunriseOpdVisitTypeId();
+    const sunriseId = await hospitalIdByName("Sunrise General Hospital");
+    const dayOne = await unusedVisitDate(sunriseId);
+    const dayTwo = await unusedVisitDate(sunriseId);
+
+    const create = async (visit_date: string) => {
+      const { data, error } = await sunrise
+        .from("visits")
+        .insert({ patient_id: patient.id, visit_type_id: visitTypeId, visit_date })
+        .select()
+        .single();
+      expect(error).toBeNull();
+      return data!;
+    };
+
+    const first = await create(dayOne);
+    const second = await create(dayOne);
+    const third = await create(dayOne);
+    expect([first.token_number, second.token_number, third.token_number]).toEqual([1, 2, 3]);
+
+    const otherDay = await create(dayTwo);
+    expect(otherDay.token_number).toBe(1);
+
+    // visit_number is the stable, never-resetting id -- still unique and increasing.
+    expect(second.visit_number).toBeGreaterThan(first.visit_number);
+    expect(third.visit_number).toBeGreaterThan(second.visit_number);
+    expect(otherDay.visit_number).toBeGreaterThan(third.visit_number);
+  });
+
+  it("each hospital counts its own tokens independently", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
+    const sunrisePatient = await makeSunrisePatient(sunrise, "Token Tenant A Patient");
+    const { data: clarityPatient } = await clarity
+      .from("patients")
+      .insert({ name: "Token Tenant B Patient" })
+      .select()
+      .single();
+    const sunriseId = await hospitalIdByName("Sunrise General Hospital");
+    const clarityId = await hospitalIdByName("Clarity Diagnostics");
+    const sunriseDate = await unusedVisitDate(sunriseId);
+    const { data: clarityType } = await serviceRoleClient()
+      .from("visit_types")
+      .select("id")
+      .eq("hospital_id", clarityId)
+      .limit(1)
+      .single();
+
+    const a = await sunrise
+      .from("visits")
+      .insert({
+        patient_id: sunrisePatient.id,
+        visit_type_id: await sunriseOpdVisitTypeId(),
+        visit_date: sunriseDate,
+      })
+      .select()
+      .single();
+    // Same calendar date at the other hospital must start at its own 1.
+    const claritySame = await serviceRoleClient()
+      .from("visits")
+      .select("id", { count: "exact", head: true })
+      .eq("hospital_id", clarityId)
+      .eq("visit_date", sunriseDate);
+    const b = await clarity
+      .from("visits")
+      .insert({
+        patient_id: clarityPatient!.id,
+        visit_type_id: clarityType!.id,
+        visit_date: sunriseDate,
+      })
+      .select()
+      .single();
+
+    expect(a.data?.token_number).toBe(1);
+    if (!claritySame.count) expect(b.data?.token_number).toBe(1);
+    expect(b.error).toBeNull();
+  });
+
+  it("the same token can't be issued twice for one hospital and day", async () => {
+    const sunriseId = await hospitalIdByName("Sunrise General Hospital");
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const patient = await makeSunrisePatient(sunrise, "Token Duplicate Patient");
+    const visitTypeId = await sunriseOpdVisitTypeId();
+    const date = await unusedVisitDate(sunriseId);
+
+    const { data: first } = await sunrise
+      .from("visits")
+      .insert({ patient_id: patient.id, visit_type_id: visitTypeId, visit_date: date })
+      .select()
+      .single();
+    const { error } = await sunrise.from("visits").insert({
+      patient_id: patient.id,
+      visit_type_id: visitTypeId,
+      visit_date: date,
+      token_number: first!.token_number,
+    });
+    expect(error).not.toBeNull();
   });
 
   it("cross-tenant: visit creation rejects a patient_id from another hospital even if forged", async () => {
@@ -138,7 +257,11 @@ describe("visits RLS", () => {
       .single();
     const { data: clarityVisit } = await clarity
       .from("visits")
-      .insert({ patient_id: clarityPatient.id, visit_type_id: clarityVisitType!.id, fee_amount: 100 })
+      .insert({
+        patient_id: clarityPatient.id,
+        visit_type_id: clarityVisitType!.id,
+        fee_amount: 100,
+      })
       .select()
       .single();
     await clarity.from("visit_payments").insert({

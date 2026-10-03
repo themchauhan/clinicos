@@ -9,7 +9,7 @@ import { LinkPendingSpinner } from "@/components/link-pending-spinner";
 export interface VisitRowData {
   id: string;
   visitDate: string;
-  visitNumber: number;
+  tokenNumber: number;
   visitTypeName: string;
   paymentLabel: string;
   /** Omitted on the patient profile page, where the patient is already
@@ -66,7 +66,7 @@ export function VisitRow({ visit }: { visit: VisitRowData }) {
           className="hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
-          #{visit.visitNumber}
+          #{visit.tokenNumber}
           <LinkPendingSpinner />
         </Link>
         {pending ? <Spinner className="ml-1.5 inline h-3 w-3 align-[-1px]" /> : null}

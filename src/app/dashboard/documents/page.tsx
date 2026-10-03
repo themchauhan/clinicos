@@ -27,7 +27,7 @@ export default async function PendingDocumentsPage({
     supabase
       .from("visit_document_requirements")
       .select(
-        "id, document_type_id, document_type_name, required, visits(id, visit_number, visit_date, patients(id, name, patient_code))",
+        "id, document_type_id, document_type_name, required, visits(id, token_number, visit_date, patients(id, name, patient_code))",
       )
       .eq("required", true),
     supabase
@@ -84,10 +84,10 @@ export default async function PendingDocumentsPage({
                     {patient.name} ({patient.patient_code})
                   </Link>
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    <dt className="text-zinc-400 dark:text-zinc-500">Visit</dt>
+                    <dt className="text-zinc-400 dark:text-zinc-500">Token</dt>
                     <dd>
                       <Link href={`/dashboard/visits/${visit.id}`} className="hover:underline">
-                        #{visit.visit_number}
+                        #{visit.token_number}
                       </Link>
                     </dd>
                     <dt className="text-zinc-400 dark:text-zinc-500">Date</dt>
@@ -104,7 +104,7 @@ export default async function PendingDocumentsPage({
             <thead>
               <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                 <th className="py-2 font-medium">Patient</th>
-                <th className="py-2 font-medium">Visit</th>
+                <th className="py-2 font-medium">Token</th>
                 <th className="py-2 font-medium">Date</th>
                 <th className="py-2 font-medium">Missing document</th>
               </tr>
@@ -125,7 +125,7 @@ export default async function PendingDocumentsPage({
                     </td>
                     <td className="py-2">
                       <Link href={`/dashboard/visits/${visit.id}`} className="hover:underline">
-                        #{visit.visit_number}
+                        #{visit.token_number}
                       </Link>
                     </td>
                     <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.visit_date}</td>

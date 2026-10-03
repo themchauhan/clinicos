@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { BackLink } from "@/components/back-link";
 import type { PaymentMode } from "@/types/database";
+import { todayInAppTimezone } from "@/lib/visits/today";
 
 export const metadata: Metadata = { title: "USG dashboard — ClinicOS" };
 
@@ -17,10 +18,6 @@ const COLUMN_LABELS: Record<Column, string> = {
   inProgress: "In progress",
   completed: "Completed",
 };
-
-function todayInAppTimezone(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default async function UsgDashboardPage() {
   // dashboard/layout.tsx already confirmed a signed-in, MFA-satisfied
@@ -49,11 +46,11 @@ export default async function UsgDashboardPage() {
     supabase
       .from("visits")
       .select(
-        "id, visit_number, status, patients(id, name, patient_code), visit_types!inner(name, module)",
+        "id, token_number, status, patients(id, name, patient_code), visit_types!inner(name, module)",
       )
       .eq("visit_date", today)
       .eq("visit_types.module", "USG")
-      .order("visit_number"),
+      .order("token_number"),
     supabase
       .from("visit_payments")
       .select("amount, mode, is_reversal, received_by, profiles(name)")
@@ -123,7 +120,7 @@ export default async function UsgDashboardPage() {
   const totalCollection = [...collectionByMode.values()].reduce((sum, v) => sum + v, 0);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-16 sm:px-6">
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
       <BackLink href="/dashboard" label="Dashboard" />
       <p className="mt-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
         {profile.hospital?.name ?? "Your centre"}

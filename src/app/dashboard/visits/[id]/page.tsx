@@ -121,7 +121,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
             </Link>
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-amber-800 dark:text-amber-400">
-            Visit #{visit.visit_number} — {visit.visit_types!.name}
+            Token {visit.token_number} — {visit.visit_types!.name}
           </h1>
         </div>
         <PrintSlipButton visitId={visit.id} />

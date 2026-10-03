@@ -11,7 +11,7 @@
       doctor, date, notes, status, follow_up_date
 - [ ] Chronological visit history shown on the patient profile
 - [ ] Printable OPD slip: centre header, patient name/code, date,
-      doctor, visit number, blank space for handwriting
+      doctor, token number (resets daily), blank space for handwriting
 - [ ] `visit_payments` table + `visits.fee_amount`
 - [ ] Payment entry UI: amount, mode dropdown (CASH/UPI/CARD/OTHER),
       "received in full" shortcut — derive UNPAID/PARTIAL/PAID, don't

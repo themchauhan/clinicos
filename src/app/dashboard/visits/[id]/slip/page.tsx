@@ -51,8 +51,8 @@ export default async function VisitSlipPage({ params }: { params: Promise<{ id: 
           </span>
         </span>
         <span>
-          <span className="text-zinc-500 dark:text-zinc-400">Visit #: </span>
-          <span className="font-medium">{visit.visit_number}</span>
+          <span className="text-zinc-500 dark:text-zinc-400">Token #: </span>
+          <span className="font-medium">{visit.token_number}</span>
         </span>
         <span>
           <span className="text-zinc-500 dark:text-zinc-400">Type: </span>

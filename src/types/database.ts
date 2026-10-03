@@ -239,6 +239,10 @@ export interface Database {
           id: string;
           hospital_id: string;
           visit_number: number;
+          // Per-hospital, per-day token (restarts at 1 each IST day),
+          // filled by a BEFORE INSERT trigger. What staff see as the
+          // visit's number; visit_number stays the stable internal id.
+          token_number: number;
           patient_id: string;
           visit_type_id: string;
           doctor_id: string | null;
@@ -669,6 +673,10 @@ export interface Database {
       };
       next_visit_number: {
         Args: Record<string, never>;
+        Returns: number;
+      };
+      next_visit_token: {
+        Args: { p_date: string };
         Returns: number;
       };
       search_patients: {

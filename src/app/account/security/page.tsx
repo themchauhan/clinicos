@@ -47,46 +47,48 @@ export default async function AccountSecurityPage() {
   );
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-16 sm:px-6">
-      <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Account security</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        {profile.role === "SUPER_ADMIN"
-          ? "Two-factor authentication for your own account, using an authenticator app."
-          : "Optional two-factor authentication for your own account, using an authenticator app."}
-      </p>
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
+      <div className="max-w-2xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Account security</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          {profile.role === "SUPER_ADMIN"
+            ? "Two-factor authentication for your own account, using an authenticator app."
+            : "Optional two-factor authentication for your own account, using an authenticator app."}
+        </p>
 
-      <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <h2 className="text-lg font-semibold text-slate-900">Two-factor authentication</h2>
-        {enabled ? (
-          <>
-            <p className="mt-2 text-sm text-emerald-700">
-              Enabled — you&apos;ll be asked for a code from your authenticator app each time you
-              sign in.
-            </p>
-            {profile.role === "SUPER_ADMIN" ? (
-              <p className="mt-2 text-sm text-slate-500">
-                Required for platform admin accounts and can&apos;t be turned off here.
+        <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <h2 className="text-lg font-semibold text-slate-900">Two-factor authentication</h2>
+          {enabled ? (
+            <>
+              <p className="mt-2 text-sm text-emerald-700">
+                Enabled — you&apos;ll be asked for a code from your authenticator app each time you
+                sign in.
               </p>
-            ) : (
-              <div className="mt-4">
-                <DisableMfaButton />
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="mt-2 text-sm text-slate-600">
-              Not enabled. Turn this on to require a code from an authenticator app (like Google
-              Authenticator or Authy) each time you sign in.
-            </p>
-            <Link
-              href="/mfa/setup?next=/account/security"
-              className="mt-4 inline-block w-fit rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
-            >
-              Enable two-factor authentication
-            </Link>
-          </>
-        )}
+              {profile.role === "SUPER_ADMIN" ? (
+                <p className="mt-2 text-sm text-slate-500">
+                  Required for platform admin accounts and can&apos;t be turned off here.
+                </p>
+              ) : (
+                <div className="mt-4">
+                  <DisableMfaButton />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-slate-600">
+                Not enabled. Turn this on to require a code from an authenticator app (like Google
+                Authenticator or Authy) each time you sign in.
+              </p>
+              <Link
+                href="/mfa/setup?next=/account/security"
+                className="mt-4 inline-block w-fit rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
+              >
+                Enable two-factor authentication
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </main>
   );

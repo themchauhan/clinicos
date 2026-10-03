@@ -3,14 +3,11 @@ import Link from "next/link";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { ModuleType } from "@/types/database";
+import { todayInAppTimezone } from "@/lib/visits/today";
 
 export const metadata: Metadata = { title: "Dashboard — ClinicOS" };
 
 const MODULE_LABELS: Record<ModuleType, string> = { GENERAL_OPD: "General OPD", USG: "USG" };
-
-function todayInAppTimezone(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default async function DashboardPage() {
   // Role/MFA gating already happened in dashboard/layout.tsx; this

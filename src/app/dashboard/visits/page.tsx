@@ -12,11 +12,11 @@ export const metadata: Metadata = { title: "Visits — ClinicOS" };
 const STATUS_LABELS = { UNPAID: "Unpaid", PARTIAL: "Partially paid", PAID: "Paid" } as const;
 const PAGE_SIZE = 50;
 const VISIT_COLUMNS =
-  "id, visit_number, visit_date, fee_amount, visit_types(name), patients(id, name, patient_code), visit_payments(amount)";
+  "id, token_number, visit_date, fee_amount, visit_types(name), patients(id, name, patient_code), visit_payments(amount)";
 
 interface VisitRow {
   id: string;
-  visit_number: number;
+  token_number: number;
   visit_date: string;
   fee_amount: number;
   visit_types: { name: string } | null;
@@ -57,7 +57,7 @@ export default async function VisitsPage({
       .from("visits")
       .select(VISIT_COLUMNS, { count: "exact" })
       .order("visit_date", { ascending: false })
-      .order("visit_number", { ascending: false })
+      .order("token_number", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     visits = result.data;
     totalCount = result.count;
@@ -116,8 +116,8 @@ export default async function VisitsPage({
                       </p>
                     </div>
                     <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      <dt className="text-zinc-400 dark:text-zinc-500">Visit</dt>
-                      <dd>#{v.visit_number}</dd>
+                      <dt className="text-zinc-400 dark:text-zinc-500">Token</dt>
+                      <dd>#{v.token_number}</dd>
                       <dt className="text-zinc-400 dark:text-zinc-500">Type</dt>
                       <dd>{v.visit_types!.name}</dd>
                       <dt className="text-zinc-400 dark:text-zinc-500">Payment</dt>
@@ -133,7 +133,7 @@ export default async function VisitsPage({
                 <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                   <th className="py-2 font-medium">Date</th>
                   <th className="py-2 font-medium">Patient</th>
-                  <th className="py-2 font-medium">Visit</th>
+                  <th className="py-2 font-medium">Token</th>
                   <th className="py-2 font-medium">Type</th>
                   <th className="py-2 font-medium">Payment</th>
                 </tr>
@@ -148,7 +148,7 @@ export default async function VisitsPage({
                       visit={{
                         id: v.id,
                         visitDate: v.visit_date,
-                        visitNumber: v.visit_number,
+                        tokenNumber: v.token_number,
                         visitTypeName: v.visit_types!.name,
                         paymentLabel: STATUS_LABELS[status],
                         patient: {

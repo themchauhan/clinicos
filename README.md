@@ -192,10 +192,15 @@ ON CONFLICT DO UPDATE`) — safe under concurrent registrations, see
   reference the target table's `(id, hospital_id)` pair, so a visit
   can never point at another hospital's patient/visit type/doctor even
   from a bug in application code.
-- `visits.visit_number` is a per-hospital sequence (same atomic
-  pattern as `patient_code`), used on the printable OPD slip
+- `visits.token_number` is the patient's token for the day: a
+  per-hospital counter that restarts at 1 every Indian (Asia/Kolkata)
+  calendar day, assigned atomically by a BEFORE INSERT trigger
+  (`visit_token_counters`, same pattern as `patient_code`). It is what
+  staff see everywhere and what prints on the OPD slip
   (`/dashboard/visits/[id]/slip`, opens in a new tab, hides the nav
-  via Tailwind's `print:` variant).
+  via Tailwind's `print:` variant). `visits.visit_number` is the
+  stable, never-resetting internal id; every visit stays stored.
+  `visit_date` defaults to the Indian date so the two always agree.
 - Payment status (UNPAID/PARTIAL/PAID) is derived at read time from
   `sum(visit_payments.amount) vs. visits.fee_amount` — never stored.
   Corrections are a separate `is_reversal = true` row with a negative
