@@ -28,7 +28,14 @@ export interface VisitRowData {
  * profile page's own Visits table, which previously only made the
  * bare "#123" text clickable.
  */
-export function VisitRow({ visit }: { visit: VisitRowData }) {
+export function VisitRow({
+  visit,
+  hideDate = false,
+}: {
+  visit: VisitRowData;
+  /** The Today tab already says which day it is. */
+  hideDate?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const href = `/dashboard/visits/${visit.id}`;
@@ -47,7 +54,9 @@ export function VisitRow({ visit }: { visit: VisitRowData }) {
         (pending ? " opacity-60" : "")
       }
     >
-      <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.visitDate}</td>
+      {hideDate ? null : (
+        <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.visitDate}</td>
+      )}
       {visit.patient ? (
         <td className="py-2">
           <Link
@@ -61,11 +70,7 @@ export function VisitRow({ visit }: { visit: VisitRowData }) {
         </td>
       ) : null}
       <td className="py-2">
-        <Link
-          href={href}
-          className="hover:underline"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <Link href={href} className="hover:underline" onClick={(e) => e.stopPropagation()}>
           #{visit.tokenNumber}
           <LinkPendingSpinner />
         </Link>
