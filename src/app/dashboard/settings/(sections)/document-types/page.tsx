@@ -8,13 +8,15 @@ export const metadata: Metadata = { title: "Document types — ClinicOS" };
 
 export default async function DocumentTypesSettingsPage() {
   const supabase = await createClient();
-  const [{ data: visitTypes }, { data: documentTypes }, { data: requirements }] = await Promise.all([
-    supabase.from("visit_types").select("*").order("name"),
-    supabase.from("document_types").select("*").order("name"),
-    supabase
-      .from("visit_type_document_requirements")
-      .select("visit_type_id, document_type_id, required"),
-  ]);
+  const [{ data: visitTypes }, { data: documentTypes }, { data: requirements }] = await Promise.all(
+    [
+      supabase.from("visit_types").select("*").order("name"),
+      supabase.from("document_types").select("*").order("name"),
+      supabase
+        .from("visit_type_document_requirements")
+        .select("visit_type_id, document_type_id, required"),
+    ],
+  );
 
   return (
     <>

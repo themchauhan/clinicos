@@ -7,6 +7,8 @@ import { DocumentUploadPanel } from "@/components/documents/document-upload-pane
 import { DocumentList } from "@/components/documents/document-list";
 import { BackLink } from "@/components/back-link";
 import { LinkPendingSpinner } from "@/components/link-pending-spinner";
+import { formatGuardian } from "@/lib/patients/guardian";
+import { ordinal } from "@/lib/visits/ordinal";
 import { VisitRow } from "@/components/visits/visit-row";
 
 export const metadata: Metadata = { title: "Patient — ClinicOS" };
@@ -106,7 +108,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
         <dd>{patient.gender ?? "—"}</dd>
 
         <dt className="text-zinc-500 dark:text-zinc-400">Guardian</dt>
-        <dd>{patient.guardian_name ?? "—"}</dd>
+        <dd>{formatGuardian(patient.guardian_relation, patient.guardian_name)}</dd>
 
         <dt className="text-zinc-500 dark:text-zinc-400">Address</dt>
         <dd>{patient.address ?? "—"}</dd>
@@ -114,7 +116,15 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
 
       <div className="mt-12 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Visits</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Visits</h2>
+            {visits && visits.length > 0 ? (
+              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+                {visits.length} {visits.length === 1 ? "visit" : "visits"} in total &middot; first
+                visit {visits[visits.length - 1].visit_date}
+              </p>
+            ) : null}
+          </div>
           <Link
             href={`/dashboard/patients/${patient.id}/visits/new`}
             className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
@@ -126,7 +136,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
         {visits && visits.length > 0 ? (
           <>
             <div className="mt-4 flex flex-col gap-3 sm:hidden">
-              {visits.map((v) => {
+              {visits.map((v, i) => {
                 const amountPaid = sumPayments(v.visit_payments);
                 const status = derivePaymentStatus(Number(v.fee_amount), amountPaid);
                 return (
@@ -137,12 +147,14 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="font-medium">
-                        #{v.token_number}
+                        {ordinal(visits.length - i)} visit
                         <LinkPendingSpinner />
                       </p>
                       <p className="text-sm text-zinc-500 dark:text-zinc-400">{v.visit_date}</p>
                     </div>
                     <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      <dt className="text-zinc-400 dark:text-zinc-500">Token</dt>
+                      <dd>#{v.token_number}</dd>
                       <dt className="text-zinc-400 dark:text-zinc-500">Type</dt>
                       <dd>{v.visit_types!.name}</dd>
                       <dt className="text-zinc-400 dark:text-zinc-500">Payment</dt>
@@ -157,13 +169,14 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
               <thead>
                 <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                   <th className="py-2 font-medium">Date</th>
+                  <th className="py-2 font-medium">Visit</th>
                   <th className="py-2 font-medium">Token</th>
                   <th className="py-2 font-medium">Type</th>
                   <th className="py-2 font-medium">Payment</th>
                 </tr>
               </thead>
               <tbody>
-                {visits.map((v) => {
+                {visits.map((v, i) => {
                   const amountPaid = sumPayments(v.visit_payments);
                   const status = derivePaymentStatus(Number(v.fee_amount), amountPaid);
                   return (
@@ -172,6 +185,8 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                       visit={{
                         id: v.id,
                         visitDate: v.visit_date,
+                        // Newest first, so the first row is the patient's latest visit.
+                        patientVisitNumber: visits.length - i,
                         tokenNumber: v.token_number,
                         visitTypeName: v.visit_types!.name,
                         paymentLabel: status,

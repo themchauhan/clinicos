@@ -26,7 +26,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
   const { data: visit } = await supabase
     .from("visits")
     .select(
-      "*, patients(id, name, patient_code, guardian_name, address, mobile, dob, approximate_age_years, gender), visit_types(name), doctors(name, registration_no), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
+      "*, patients(id, name, patient_code, guardian_name, guardian_relation, address, mobile, dob, approximate_age_years, gender), visit_types(name), doctors(name, registration_no), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -68,7 +68,9 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
     supabase.from("paired_devices").select("id, confirmed_at, last_seen_at").maybeSingle(),
     supabase
       .from("form_templates")
-      .select("id, name, description, form_template_fields(field_key, label, input_type, display_order)")
+      .select(
+        "id, name, description, form_template_fields(field_key, label, input_type, display_order)",
+      )
       .eq("active", true)
       .order("name"),
     supabase.from("hospitals").select("name, address").maybeSingle(),
@@ -314,6 +316,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
               patient={{
                 name: visit.patients!.name,
                 guardianName: visit.patients!.guardian_name,
+                guardianRelation: visit.patients!.guardian_relation,
                 address: visit.patients!.address,
                 mobile: visit.patients!.mobile,
                 dob: visit.patients!.dob,

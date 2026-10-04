@@ -93,7 +93,9 @@ test("adding a doctor makes them selectable on a new visit, deactivating removes
   const name = `E2E Settings Test Patient ${Date.now()}`;
   await createPatientViaUi(page, { name });
   await page.getByRole("link", { name: "New visit" }).click();
-  await expect(page.getByLabel("Doctor").locator(`option:has-text("${doctorName}")`)).toHaveCount(1);
+  await expect(page.getByLabel("Doctor").locator(`option:has-text("${doctorName}")`)).toHaveCount(
+    1,
+  );
 
   // Deactivate the doctor, then confirm they no longer appear as an
   // option on a fresh visit form (the existing .eq("active", true)
@@ -106,5 +108,7 @@ test("adding a doctor makes them selectable on a new visit, deactivating removes
   await page.goto(`/dashboard/patients`);
   await page.getByRole("link", { name }).click();
   await page.getByRole("link", { name: "New visit" }).click();
-  await expect(page.getByLabel("Doctor").locator(`option:has-text("${doctorName}")`)).toHaveCount(0);
+  await expect(page.getByLabel("Doctor").locator(`option:has-text("${doctorName}")`)).toHaveCount(
+    0,
+  );
 });

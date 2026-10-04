@@ -29,7 +29,12 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 export function NewFormTemplateForm() {
   const [state, formAction] = useActionState(createFormTemplate, initialState);
   const [file, setFile] = useState<File | null>(null);
-  const [layout, setLayout] = useState<FormLayout>({ fields: [], signature: null, seal: null, doctorSignature: null });
+  const [layout, setLayout] = useState<FormLayout>({
+    fields: [],
+    signature: null,
+    seal: null,
+    doctorSignature: null,
+  });
   const router = useRouter();
 
   useEffect(() => {

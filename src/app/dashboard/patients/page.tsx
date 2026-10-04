@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PatientRow, PatientCard, type PatientRowData } from "@/components/patients/patient-row";
+import { todayInAppTimezone } from "@/lib/visits/today";
 import { BackLink } from "@/components/back-link";
 import { Pagination } from "@/components/pagination";
 
@@ -12,13 +13,31 @@ const PAGE_SIZE = 50;
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; when?: string }>;
 }) {
-  const { q, page: pageParam } = await searchParams;
+  const { q, page: pageParam, when: whenParam } = await searchParams;
+  const when: "today" | "all" = whenParam === "all" ? "all" : "today";
   const query = q?.trim() ?? "";
   const page = Math.max(1, Number(pageParam) || 1);
 
   const supabase = await createClient();
+
+  // "Today" = patients registered today or with a visit today (India
+  // time, same day boundary as the visits queue). "All" is the whole
+  // register, newest first, shown on demand. Search ignores the tabs
+  // and always looks across everyone.
+  const todayDate = todayInAppTimezone();
+  const todayStart = new Date(`${todayDate}T00:00:00+05:30`).toISOString();
+  const dayArgs = { p_date: todayDate, p_day_start: todayStart };
+  const { count: allCount } = await supabase
+    .from("patients")
+    .select("id", { count: "exact", head: true })
+    .is("deleted_at", null);
+  const { count: todayCount } = await supabase.rpc("patients_for_day", dayArgs, {
+    count: "exact",
+    head: true,
+  });
+
   // Search results aren't paginated -- search_patients already caps
   // itself at 50 best matches server-side (see its own migration), so
   // a search narrow enough to matter never needs a second page.
@@ -27,10 +46,11 @@ export default async function PatientsPage({
   if (query) {
     ({ data: patients } = await supabase.rpc("search_patients", { p_query: query }));
   } else {
-    const result = await supabase
-      .from("patients")
-      .select("*", { count: "exact" })
-      .is("deleted_at", null)
+    const result = await (
+      when === "today"
+        ? supabase.rpc("patients_for_day", dayArgs, { count: "exact" })
+        : supabase.from("patients").select("*", { count: "exact" }).is("deleted_at", null)
+    )
       .order("created_at", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     patients = result.data;
@@ -52,12 +72,38 @@ export default async function PatientsPage({
         </Link>
       </div>
 
-      <form method="get" className="mt-6 flex max-w-md gap-2">
+      <nav aria-label="Patient list" className="mt-6 flex gap-2">
+        {(
+          [
+            { key: "today", label: "Today", count: todayCount ?? 0 },
+            { key: "all", label: "All patients", count: allCount ?? 0 },
+          ] as const
+        ).map((tab) => {
+          const active = !query && when === tab.key;
+          return (
+            <Link
+              key={tab.key}
+              href={`/dashboard/patients?when=${tab.key}`}
+              aria-current={active ? "page" : undefined}
+              className={
+                active
+                  ? "rounded-md bg-teal-600 px-4 py-1.5 text-sm font-medium text-white"
+                  : "rounded-md border border-zinc-300 px-4 py-1.5 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              }
+            >
+              {tab.label}{" "}
+              <span className={active ? "text-teal-100" : "text-zinc-400"}>{tab.count}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <form method="get" className="mt-4 flex max-w-md gap-2">
         <input
           type="search"
           name="q"
           defaultValue={query}
-          placeholder="Search by name, mobile, or patient code"
+          placeholder="Search all patients by name, mobile, or code"
           aria-label="Search patients"
           className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
         />
@@ -100,12 +146,17 @@ export default async function PatientsPage({
                 pageSize={PAGE_SIZE}
                 totalCount={totalCount}
                 basePath="/dashboard/patients"
+                extraParams={{ when }}
               />
             ) : null}
           </>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {query ? `No patients match "${query}".` : "No patients registered yet."}
+            {query
+              ? `No patients match "${query}".`
+              : when === "today"
+                ? 'No patients registered or seen today. Use "All patients" or search to find someone.'
+                : "No patients registered yet."}
           </p>
         )}
       </div>

@@ -123,6 +123,45 @@ export async function updateHospitalStatus(
   return {};
 }
 
+/**
+ * The one-time change of a centre's patient-ID prefix (CLC in
+ * CLC001). The database function enforces everything that matters --
+ * platform admin only, once, unique, format -- and relabels the
+ * centre's existing patients; this just surfaces its message.
+ */
+export async function updatePatientIdPrefix(
+  hospitalId: string,
+  prefix: string,
+): Promise<{ error?: string }> {
+  requireRole(await getSessionProfile(), ["SUPER_ADMIN"]);
+
+  const cleaned = prefix.trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,6}$/.test(cleaned)) {
+    return { error: "Use 2-6 letters or digits, e.g. CLC." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_hospital_patient_prefix", {
+    p_hospital_id: hospitalId,
+    p_prefix: cleaned,
+  });
+  if (error) {
+    return { error: error.message };
+  }
+
+  await logPlatformAdminAudit({
+    targetHospitalId: hospitalId,
+    action: "hospital.patient_id_prefix_changed",
+    targetType: "hospital",
+    targetId: hospitalId,
+    metadata: { prefix: cleaned },
+  });
+
+  revalidatePath(`/admin/hospitals/${hospitalId}`);
+  revalidatePath(`/admin/hospitals/${hospitalId}/patients`);
+  return {};
+}
+
 export async function updateHospitalPlan(
   hospitalId: string,
   plan: string,

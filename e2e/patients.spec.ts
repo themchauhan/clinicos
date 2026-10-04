@@ -32,7 +32,7 @@ test("create a patient, find them by name/mobile/code, then edit them", async ({
 
   await expect(page.getByRole("heading", { name })).toBeVisible();
   const patientCode = await page.locator("p.font-mono").first().textContent();
-  expect(patientCode).toMatch(/^\d{6}$/);
+  expect(patientCode).toMatch(/^[A-Z0-9]{2,6}\d{3,}$/);
 
   for (const query of [name, mobile, patientCode!]) {
     await page.goto(`/dashboard/patients?q=${encodeURIComponent(query)}`);
@@ -45,10 +45,13 @@ test("create a patient, find them by name/mobile/code, then edit them", async ({
   await expect(page).toHaveURL(/\/edit$/);
 
   await page.getByLabel("Address").fill("12 Test Street");
+  await page.getByLabel("Relationship").selectOption("W/O");
+  await page.getByLabel("Guardian name").fill("Test Guardian");
   await page.getByRole("button", { name: "Save changes" }).click();
 
   await expect(page).toHaveURL(/\/dashboard\/patients\/[0-9a-f-]+$/);
   await expect(page.getByText("12 Test Street")).toBeVisible();
+  await expect(page.getByText("W/O Test Guardian")).toBeVisible();
 });
 
 test("warns about a likely duplicate but allows creating anyway", async ({ page }) => {

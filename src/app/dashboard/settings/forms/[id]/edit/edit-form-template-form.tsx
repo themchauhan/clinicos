@@ -11,7 +11,10 @@ import {
   type SealBoxInput,
   type DoctorSignatureBoxInput,
 } from "@/app/dashboard/settings/forms/actions";
-import { FormTemplateDesigner, type FormLayout } from "@/components/settings/forms/form-template-designer";
+import {
+  FormTemplateDesigner,
+  type FormLayout,
+} from "@/components/settings/forms/form-template-designer";
 import { Spinner } from "@/components/spinner";
 
 const initialState: FormTemplateFormState = {};

@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatGuardian, type GuardianRelation } from "@/lib/patients/guardian";
 import { Spinner } from "@/components/spinner";
 import { LinkPendingSpinner } from "@/components/link-pending-spinner";
 
@@ -12,6 +13,7 @@ export interface PatientRowData {
   name: string;
   mobile: string | null;
   guardian_name: string | null;
+  guardian_relation: GuardianRelation | null;
 }
 
 /**
@@ -56,7 +58,9 @@ export function PatientRow({ patient }: { patient: PatientRowData }) {
         {pending ? <Spinner className="ml-1.5 inline h-3 w-3 align-[-1px]" /> : null}
       </td>
       <td className="py-2 text-zinc-600 dark:text-zinc-400">{patient.mobile ?? "—"}</td>
-      <td className="py-2 text-zinc-600 dark:text-zinc-400">{patient.guardian_name ?? "—"}</td>
+      <td className="py-2 text-zinc-600 dark:text-zinc-400">
+        {formatGuardian(patient.guardian_relation, patient.guardian_name)}
+      </td>
     </tr>
   );
 }
@@ -80,7 +84,7 @@ export function PatientCard({ patient }: { patient: PatientRowData }) {
         <dt className="text-zinc-400 dark:text-zinc-500">Mobile</dt>
         <dd>{patient.mobile ?? "—"}</dd>
         <dt className="text-zinc-400 dark:text-zinc-500">Guardian</dt>
-        <dd>{patient.guardian_name ?? "—"}</dd>
+        <dd>{formatGuardian(patient.guardian_relation, patient.guardian_name)}</dd>
       </dl>
     </Link>
   );

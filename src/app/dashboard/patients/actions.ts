@@ -6,6 +6,7 @@ import { requireRole, requireActiveTenant } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
 import type { PatientGender } from "@/types/database";
+import { isGuardianRelation, type GuardianRelation } from "@/lib/patients/guardian";
 
 // Digits only, with an optional leading "+" for a country code --
 // strict enough to reject non-numeric input like "abcd" while still
@@ -19,6 +20,7 @@ interface PatientFields {
   dob: string | null;
   approximateAgeYears: number | null;
   guardianName: string | null;
+  guardianRelation: GuardianRelation | null;
   gender: PatientGender | null;
   address: string | null;
 }
@@ -58,12 +60,17 @@ function readPatientFields(formData: FormData): PatientFields | { error: string 
   const approximateAgeYearsRaw = String(formData.get("approximateAgeYears") ?? "").trim();
   const approximateAgeYears = approximateAgeYearsRaw ? Number(approximateAgeYearsRaw) : null;
   const guardianName = String(formData.get("guardianName") ?? "").trim() || null;
+  const guardianRelationRaw = String(formData.get("guardianRelation") ?? "").trim();
+  const guardianRelation = isGuardianRelation(guardianRelationRaw) ? guardianRelationRaw : null;
   const genderRaw = String(formData.get("gender") ?? "").trim();
   const gender = (["MALE", "FEMALE", "OTHER"] as const).includes(genderRaw as PatientGender)
     ? (genderRaw as PatientGender)
     : null;
   const address = String(formData.get("address") ?? "").trim() || null;
 
+  if (guardianRelation && !guardianName) {
+    return { error: "Enter the guardian's name, or clear the relationship." };
+  }
   if (dob && approximateAgeYears) {
     return { error: "Enter either a date of birth or an approximate age, not both." };
   }
@@ -74,7 +81,16 @@ function readPatientFields(formData: FormData): PatientFields | { error: string 
     return { error: "Approximate age must be a positive number." };
   }
 
-  return { name, mobile, dob, approximateAgeYears, guardianName, gender, address };
+  return {
+    name,
+    mobile,
+    dob,
+    approximateAgeYears,
+    guardianName,
+    guardianRelation,
+    gender,
+    address,
+  };
 }
 
 export async function createPatient(
@@ -120,6 +136,7 @@ export async function createPatient(
       dob: fields.dob,
       approximate_age_years: fields.approximateAgeYears,
       guardian_name: fields.guardianName,
+      guardian_relation: fields.guardianRelation,
       gender: fields.gender,
       address: fields.address,
     })
@@ -161,6 +178,7 @@ export async function updatePatient(
       dob: fields.dob,
       approximate_age_years: fields.approximateAgeYears,
       guardian_name: fields.guardianName,
+      guardian_relation: fields.guardianRelation,
       gender: fields.gender,
       address: fields.address,
     })

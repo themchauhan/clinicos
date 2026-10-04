@@ -9,6 +9,7 @@ import {
 const patient: PatientFieldSource = {
   name: "Test Patient",
   guardianName: "Test Guardian",
+  guardianRelation: "W/O",
   address: "123 Test Street",
   mobile: "9999999999",
   dob: null,
@@ -39,6 +40,32 @@ describe("resolveKnownFieldValue", () => {
     expect(resolveKnownFieldValue("patient.age", { patient, hospital, doctor })).toBe("~30");
   });
 
+  it("resolves the guardian relationship alone and combined with the name", () => {
+    const ctx = { patient, hospital, doctor };
+    expect(resolveKnownFieldValue("patient.guardian_relation", ctx)).toBe("W/O");
+    expect(resolveKnownFieldValue("patient.guardian_full", ctx)).toBe("W/O Test Guardian");
+    // The existing name-only key is unchanged, so older templates keep working.
+    expect(resolveKnownFieldValue("patient.guardian_name", ctx)).toBe("Test Guardian");
+  });
+
+  it("falls back gracefully when no relationship or guardian is on file", () => {
+    const noRelation = { ...patient, guardianRelation: null };
+    expect(
+      resolveKnownFieldValue("patient.guardian_full", { patient: noRelation, hospital, doctor }),
+    ).toBe("Test Guardian");
+    expect(
+      resolveKnownFieldValue("patient.guardian_relation", {
+        patient: noRelation,
+        hospital,
+        doctor,
+      }),
+    ).toBe("");
+    const noGuardian = { ...patient, guardianName: null, guardianRelation: null };
+    expect(
+      resolveKnownFieldValue("patient.guardian_full", { patient: noGuardian, hospital, doctor }),
+    ).toBe("");
+  });
+
   it("resolves a known hospital field, falling back to the hospital's own name/address when unset", () => {
     expect(resolveKnownFieldValue("hospital.centre_name", { patient, hospital, doctor })).toBe(
       "Sunrise General Hospital",
@@ -49,7 +76,10 @@ describe("resolveKnownFieldValue", () => {
   });
 
   it("prefers an explicit hospital_form_profile override over the hospital's own name/address", () => {
-    const overridden: HospitalFieldSource = { ...hospital, centreName: "Genetic Clinic Trade Name" };
+    const overridden: HospitalFieldSource = {
+      ...hospital,
+      centreName: "Genetic Clinic Trade Name",
+    };
     expect(
       resolveKnownFieldValue("hospital.centre_name", { patient, hospital: overridden, doctor }),
     ).toBe("Genetic Clinic Trade Name");
@@ -78,7 +108,9 @@ describe("resolveKnownFieldValue", () => {
     expect(resolveKnownFieldValue("guardian_name", { patient, hospital, doctor })).toBe(
       "Test Guardian",
     );
-    expect(resolveKnownFieldValue("address", { patient, hospital, doctor })).toBe("123 Test Street");
+    expect(resolveKnownFieldValue("address", { patient, hospital, doctor })).toBe(
+      "123 Test Street",
+    );
   });
 
   it("returns undefined for an unrecognized field key", () => {

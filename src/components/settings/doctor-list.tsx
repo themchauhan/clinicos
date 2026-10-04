@@ -60,7 +60,13 @@ function UploadSignatureButton() {
   );
 }
 
-function RegistrationNoField({ doctorId, registrationNo }: { doctorId: string; registrationNo: string | null }) {
+function RegistrationNoField({
+  doctorId,
+  registrationNo,
+}: {
+  doctorId: string;
+  registrationNo: string | null;
+}) {
   return (
     <form
       action={updateDoctorRegistrationNo.bind(null, doctorId)}
@@ -81,7 +87,13 @@ function RegistrationNoField({ doctorId, registrationNo }: { doctorId: string; r
 /** Upload once, reused automatically on every form that places a
  * "Doctor's signature" box (see form-flatten.ts) -- same idea as the
  * hospital seal, scoped per doctor. */
-function SignatureUploadField({ doctorId, hasSignature }: { doctorId: string; hasSignature: boolean }) {
+function SignatureUploadField({
+  doctorId,
+  hasSignature,
+}: {
+  doctorId: string;
+  hasSignature: boolean;
+}) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {

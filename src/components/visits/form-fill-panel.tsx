@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PdfCanvas } from "@/components/settings/forms/pdf-canvas";
 import { SignaturePad } from "@/components/scans/signature-pad";
-import {
-  getFormTemplateViewUrl,
-  submitFilledForm,
-} from "@/app/dashboard/visits/form-actions";
+import { getFormTemplateViewUrl, submitFilledForm } from "@/app/dashboard/visits/form-actions";
 import {
   createFormSignSession,
   getScanSessionStatus,

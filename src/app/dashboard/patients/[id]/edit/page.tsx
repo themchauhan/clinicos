@@ -22,19 +22,21 @@ export default async function EditPatientPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6">
       <BackLink href={`/dashboard/patients/${patient.id}`} label={patient.name} />
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">Edit {patient.name}</h1>
-      <div className="mt-8">
+      <div className="mt-5">
         <PatientForm
           action={updatePatient.bind(null, patient.id)}
           submitLabel="Save changes"
+          cancelHref={`/dashboard/patients/${patient.id}`}
           defaults={{
             name: patient.name,
             mobile: patient.mobile,
             dob: patient.dob,
             approximateAgeYears: patient.approximate_age_years,
             guardianName: patient.guardian_name,
+            guardianRelation: patient.guardian_relation,
             gender: patient.gender,
             address: patient.address,
           }}

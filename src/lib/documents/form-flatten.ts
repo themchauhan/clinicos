@@ -81,7 +81,9 @@ function drawField(page: PDFPage, font: PDFFont, field: FormFieldPlacement) {
   // ~1.8 characters per point of font size is a rough Helvetica
   // average -- fine for wrapping a postal address, not for anything
   // that needs to fit an exact print column.
-  const maxCharsPerLine = field.multiline ? Math.max(20, Math.floor(300 / field.fontSize)) : Infinity;
+  const maxCharsPerLine = field.multiline
+    ? Math.max(20, Math.floor(300 / field.fontSize))
+    : Infinity;
   const lines = field.multiline ? wrapText(field.value, maxCharsPerLine) : [field.value];
 
   lines.forEach((line, i) => {

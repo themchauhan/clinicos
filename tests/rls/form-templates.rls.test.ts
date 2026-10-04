@@ -32,7 +32,8 @@ async function makeSunriseFormTemplate(sunrise: Awaited<ReturnType<typeof signIn
     })
     .select()
     .single();
-  if (templateError || !template) throw templateError ?? new Error("failed to create form template");
+  if (templateError || !template)
+    throw templateError ?? new Error("failed to create form template");
 
   const { data: field, error: fieldError } = await sunrise
     .from("form_template_fields")
@@ -69,7 +70,10 @@ describe("form_templates RLS", () => {
     const { template } = await makeSunriseFormTemplate(sunrise);
 
     const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
-    const { data: templates } = await clarity.from("form_templates").select("*").eq("id", template.id);
+    const { data: templates } = await clarity
+      .from("form_templates")
+      .select("*")
+      .eq("id", template.id);
     expect(templates).toHaveLength(0);
 
     const { data: fields } = await clarity
@@ -84,7 +88,9 @@ describe("form_templates RLS", () => {
     const { storagePath } = await makeSunriseFormTemplate(sunrise);
 
     const clarity = await signInAs(SEED_ACCOUNTS.clarity.admin);
-    const { data, error } = await clarity.storage.from("documents").createSignedUrl(storagePath, 60);
+    const { data, error } = await clarity.storage
+      .from("documents")
+      .createSignedUrl(storagePath, 60);
     expect(data).toBeNull();
     expect(error).not.toBeNull();
   });

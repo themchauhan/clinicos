@@ -13,7 +13,11 @@ export const metadata: Metadata = { title: "Edit form fields — ClinicOS" };
 // feature, which only need to survive one click.
 const EDIT_SESSION_URL_TTL_SECONDS = 15 * 60;
 
-export default async function EditFormTemplatePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditFormTemplatePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const profile = await getSessionProfile();
   if (!profile) {

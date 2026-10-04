@@ -10,11 +10,7 @@ import { SettingsNav } from "@/components/settings/settings-nav";
  * multi-page chrome (list/new/edit) and would otherwise end up
  * double-wrapped.
  */
-export default async function SettingsSectionsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function SettingsSectionsLayout({ children }: { children: React.ReactNode }) {
   // dashboard/layout.tsx already confirmed a signed-in, MFA-satisfied
   // tenant profile; this adds the narrower HOSPITAL_ADMIN-only check
   // on top, same as every settings page already did individually.

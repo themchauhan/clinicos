@@ -12,6 +12,8 @@
 // visit_payments below, which use the composite (foo_id, hospital_id)
 // FKs from the Phase 2/3 migrations, not just a bare id column.
 
+import type { GuardianRelation } from "@/lib/patients/guardian";
+
 export type HospitalStatus = "TRIAL" | "ACTIVE" | "SUSPENDED" | "EXPIRED";
 export type ModuleType = "GENERAL_OPD" | "USG";
 export type StaffRole = "SUPER_ADMIN" | "HOSPITAL_ADMIN" | "RECEPTIONIST";
@@ -36,6 +38,8 @@ export interface Database {
           email: string | null;
           status: HospitalStatus;
           plan: string;
+          patient_id_prefix: string;
+          patient_id_prefix_locked: boolean;
           trial_ends_at: string;
           subscription_ends_at: string | null;
           created_at: string;
@@ -168,6 +172,7 @@ export interface Database {
           dob: string | null;
           approximate_age_years: number | null;
           guardian_name: string | null;
+          guardian_relation: GuardianRelation | null;
           gender: PatientGender | null;
           address: string | null;
           created_at: string;
@@ -674,6 +679,14 @@ export interface Database {
       next_visit_number: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      set_hospital_patient_prefix: {
+        Args: { p_hospital_id: string; p_prefix: string };
+        Returns: undefined;
+      };
+      patients_for_day: {
+        Args: { p_date: string; p_day_start: string };
+        Returns: Database["public"]["Tables"]["patients"]["Row"][];
       };
       next_visit_token: {
         Args: { p_date: string };

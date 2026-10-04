@@ -156,7 +156,14 @@ describe("flattenFormTemplate", () => {
       fields: [],
       signature: { pageNumber: 1, x: 50, y: 100, width: 150, height: 50, signaturePng },
       seal: { pageNumber: 1, x: 300, y: 100, width: 60, height: 60, image: sealPng },
-      doctorSignature: { pageNumber: 1, x: 400, y: 300, width: 160, height: 50, image: doctorSignaturePng },
+      doctorSignature: {
+        pageNumber: 1,
+        x: 400,
+        y: 300,
+        width: 160,
+        height: 50,
+        image: doctorSignaturePng,
+      },
     });
     const signatureOnly = await flattenFormTemplate({
       blankPdf,

@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { HospitalStatusForm } from "@/components/admin/hospital-status-form";
 import { HospitalPlanForm } from "@/components/admin/hospital-plan-form";
+import { HospitalPatientPrefixForm } from "@/components/admin/hospital-patient-prefix-form";
 import { RecordPaymentForm } from "@/components/admin/record-payment-form";
 import { DeleteHospitalForm } from "@/components/admin/delete-hospital-form";
 import { BackLink } from "@/components/back-link";
@@ -61,6 +62,15 @@ export default async function HospitalDetailPage({ params }: { params: Promise<{
         <dt className="pt-2 text-slate-500">Plan</dt>
         <dd>
           <HospitalPlanForm hospitalId={hospital.id} currentPlan={hospital.plan} />
+        </dd>
+
+        <dt className="pt-2 text-slate-500">Patient ID prefix</dt>
+        <dd>
+          <HospitalPatientPrefixForm
+            hospitalId={hospital.id}
+            currentPrefix={hospital.patient_id_prefix}
+            locked={hospital.patient_id_prefix_locked}
+          />
         </dd>
 
         <dt className="text-slate-500">Trial ends</dt>

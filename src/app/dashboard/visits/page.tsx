@@ -25,7 +25,7 @@ interface VisitRow {
   visit_payments: { amount: number }[];
 }
 
-type When = "today" | "past";
+type When = "today" | "past" | "all";
 
 export default async function VisitsPage({
   searchParams,
@@ -41,7 +41,7 @@ export default async function VisitsPage({
   const params = await searchParams;
   const query = params.q?.trim() ?? "";
   const page = Math.max(1, Number(params.page) || 1);
-  const when: When = params.when === "past" ? "past" : "today";
+  const when: When = params.when === "past" || params.when === "all" ? params.when : "today";
   const todayDate = todayInAppTimezone();
 
   // Search spans whichever of Today / Past is ticked; ticking neither
@@ -94,8 +94,7 @@ export default async function VisitsPage({
             .eq("visit_date", todayDate)
             .order("token_number", { ascending: true })
             .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
-        : await base
-            .lt("visit_date", todayDate)
+        : await (when === "past" ? base.lt("visit_date", todayDate) : base)
             .order("visit_date", { ascending: false })
             .order("token_number", { ascending: false })
             .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
@@ -122,6 +121,7 @@ export default async function VisitsPage({
           [
             { key: "today", label: "Today", count: todayCount ?? 0 },
             { key: "past", label: "Past", count: pastCount ?? 0 },
+            { key: "all", label: "All", count: (todayCount ?? 0) + (pastCount ?? 0) },
           ] as const
         ).map((tab) => {
           const active = !query && when === tab.key;
@@ -259,7 +259,9 @@ export default async function VisitsPage({
               ? `No visits match "${query}".`
               : when === "today"
                 ? "No visits yet today."
-                : "No past visits."}
+                : when === "past"
+                  ? "No past visits."
+                  : "No visits yet."}
           </p>
         )}
       </div>

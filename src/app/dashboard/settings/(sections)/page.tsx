@@ -20,7 +20,12 @@ export default async function SettingsOverviewPage() {
       <h2 className="text-lg font-semibold">Modules</h2>
       <div className="mt-4 flex flex-wrap gap-3">
         {ALL_MODULES.map(({ module, label }) => (
-          <ModuleToggle key={module} module={module} label={label} enabled={enabledSet.has(module)} />
+          <ModuleToggle
+            key={module}
+            module={module}
+            label={label}
+            enabled={enabledSet.has(module)}
+          />
         ))}
       </div>
     </div>

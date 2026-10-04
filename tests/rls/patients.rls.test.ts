@@ -11,7 +11,7 @@ describe("patients RLS", () => {
       .select()
       .single();
     expect(createError).toBeNull();
-    expect(created?.patient_code).toMatch(/^\d{6}$/);
+    expect(created?.patient_code).toMatch(/^[A-Z0-9]{2,6}\d{3,}$/);
     expect(created?.hospital_id).toBe(await hospitalIdByName("Sunrise General Hospital"));
 
     const byName = await sunrise.rpc("search_patients", { p_query: "Ramesh Kumar" });
@@ -29,6 +29,55 @@ describe("patients RLS", () => {
       .eq("id", created!.id)
       .single();
     expect(reopened?.id).toBe(created!.id);
+  });
+
+  it("guardian relationship: a valid value saves, null is allowed, an unknown value is rejected", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+
+    const { data: withRelation, error } = await sunrise
+      .from("patients")
+      .insert({
+        name: "Guardian Relation Testperson",
+        guardian_name: "Test Guardian",
+        guardian_relation: "W/O",
+      })
+      .select()
+      .single();
+    expect(error).toBeNull();
+    expect(withRelation?.guardian_relation).toBe("W/O");
+
+    const { data: withoutRelation, error: nullError } = await sunrise
+      .from("patients")
+      .insert({ name: "Guardian Relation Null Testperson", guardian_name: "Test Guardian" })
+      .select()
+      .single();
+    expect(nullError).toBeNull();
+    expect(withoutRelation?.guardian_relation).toBeNull();
+
+    const { error: invalid } = await sunrise.from("patients").insert({
+      name: "Guardian Relation Invalid Testperson",
+      guardian_relation: "X/O" as never,
+    });
+    expect(invalid).not.toBeNull();
+  });
+
+  it("patients_for_day: lists patients registered today, scoped to the caller's own hospital", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const { data: created } = await sunrise
+      .from("patients")
+      .insert({ name: "Registered Today Testperson" })
+      .select()
+      .single();
+
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+    const args = { p_date: today, p_day_start: new Date(`${today}T00:00:00+05:30`).toISOString() };
+
+    const { data: sunriseToday } = await sunrise.rpc("patients_for_day", args);
+    expect(sunriseToday?.some((p) => p.id === created!.id)).toBe(true);
+
+    const clarity = await signInAs(SEED_ACCOUNTS.clarity.receptionist);
+    const { data: clarityToday } = await clarity.rpc("patients_for_day", args);
+    expect(clarityToday?.some((p) => p.id === created!.id)).toBe(false);
   });
 
   it("fuzzy name search tolerates a spelling variant", async () => {

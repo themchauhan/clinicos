@@ -4,12 +4,17 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Spinner } from "@/components/spinner";
+import { ordinal } from "@/lib/visits/ordinal";
 import { LinkPendingSpinner } from "@/components/link-pending-spinner";
 
 export interface VisitRowData {
   id: string;
   visitDate: string;
   tokenNumber: number;
+  /** This patient's nth visit overall (1 = first ever). Only passed on
+   * the patient profile, where it's meaningful; the cross-patient list
+   * leaves it out. */
+  patientVisitNumber?: number;
   visitTypeName: string;
   paymentLabel: string;
   /** Omitted on the patient profile page, where the patient is already
@@ -57,6 +62,9 @@ export function VisitRow({
       {hideDate ? null : (
         <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.visitDate}</td>
       )}
+      {visit.patientVisitNumber !== undefined ? (
+        <td className="py-2">{ordinal(visit.patientVisitNumber)}</td>
+      ) : null}
       {visit.patient ? (
         <td className="py-2">
           <Link

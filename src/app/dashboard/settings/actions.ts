@@ -137,7 +137,9 @@ export async function createDoctor(
   const registrationNo = String(formData.get("registrationNo") ?? "").trim() || null;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("doctors").insert({ name, registration_no: registrationNo });
+  const { error } = await supabase
+    .from("doctors")
+    .insert({ name, registration_no: registrationNo });
 
   if (error) {
     return { error: "Could not add that doctor." };
@@ -176,7 +178,10 @@ export async function setDoctorStatus(doctorId: string, active: boolean): Promis
  * narrow edit action rather than requiring a whole doctor to be
  * recreated to fix a typo.
  */
-export async function updateDoctorRegistrationNo(doctorId: string, formData: FormData): Promise<void> {
+export async function updateDoctorRegistrationNo(
+  doctorId: string,
+  formData: FormData,
+): Promise<void> {
   requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
 
   const registrationNo = String(formData.get("registrationNo") ?? "").trim() || null;

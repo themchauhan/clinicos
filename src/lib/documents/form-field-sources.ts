@@ -1,4 +1,5 @@
 import { ageInYears } from "@/lib/patients/age";
+import { formatGuardian } from "@/lib/patients/guardian";
 import type { PatientGender } from "@/types/database";
 
 /**
@@ -14,6 +15,8 @@ import type { PatientGender } from "@/types/database";
 export const PATIENT_FIELD_OPTIONS = [
   { key: "patient.name", label: "Patient name" },
   { key: "patient.guardian_name", label: "Guardian / husband / father's name" },
+  { key: "patient.guardian_relation", label: "Guardian relationship (S/O, D/O, W/O…)" },
+  { key: "patient.guardian_full", label: "Guardian with relationship (e.g. W/O Anand)" },
   { key: "patient.address", label: "Patient address" },
   { key: "patient.mobile", label: "Patient mobile" },
   { key: "patient.age", label: "Patient age" },
@@ -47,6 +50,7 @@ function todayIso(): string {
 export interface PatientFieldSource {
   name: string;
   guardianName: string | null;
+  guardianRelation: string | null;
   address: string | null;
   mobile: string | null;
   dob: string | null;
@@ -93,6 +97,12 @@ export function resolveKnownFieldValue(
     case "guardian_name":
     case "husband_or_father_name":
       return ctx.patient.guardianName ?? "";
+    case "patient.guardian_relation":
+      return ctx.patient.guardianRelation ?? "";
+    case "patient.guardian_full":
+      return ctx.patient.guardianName
+        ? formatGuardian(ctx.patient.guardianRelation, ctx.patient.guardianName)
+        : "";
     case "patient.address":
     case "address":
       return ctx.patient.address ?? "";

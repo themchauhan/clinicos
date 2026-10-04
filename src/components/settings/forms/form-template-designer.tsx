@@ -132,7 +132,13 @@ export function FormTemplateDesigner({
 
   function handleClickAt(point: PdfPoint) {
     if (mode === "signature") {
-      const box: SignatureBoxInput = { pageNumber, x: point.xPt, y: point.yPt, width: 160, height: 50 };
+      const box: SignatureBoxInput = {
+        pageNumber,
+        x: point.xPt,
+        y: point.yPt,
+        width: 160,
+        height: 50,
+      };
       setSignature(box);
       emit(fields, box, seal, doctorSignature);
       setMode(null);
@@ -146,7 +152,13 @@ export function FormTemplateDesigner({
       return;
     }
     if (mode === "doctorSignature") {
-      const box: DoctorSignatureBoxInput = { pageNumber, x: point.xPt, y: point.yPt, width: 160, height: 50 };
+      const box: DoctorSignatureBoxInput = {
+        pageNumber,
+        x: point.xPt,
+        y: point.yPt,
+        width: 160,
+        height: 50,
+      };
       setDoctorSignature(box);
       emit(fields, signature, seal, box);
       setMode(null);
@@ -237,7 +249,12 @@ export function FormTemplateDesigner({
           </div>
         ) : null}
 
-        <PdfCanvas source={file} pageNumber={pageNumber} onLoaded={setPageInfo} onClickAt={handleClickAt}>
+        <PdfCanvas
+          source={file}
+          pageNumber={pageNumber}
+          onLoaded={setPageInfo}
+          onClickAt={handleClickAt}
+        >
           {pageInfo
             ? (() => {
                 // The canvas is only ever rendered at min(1, CANVAS_WIDTH_PX / pageWidthPt)
@@ -290,7 +307,11 @@ export function FormTemplateDesigner({
                       : null}
                     {doctorSignature && doctorSignature.pageNumber === pageNumber
                       ? (() => {
-                          const pos = pdfPointToCanvasPixel(doctorSignature, pageInfo, renderedWidthPx);
+                          const pos = pdfPointToCanvasPixel(
+                            doctorSignature,
+                            pageInfo,
+                            renderedWidthPx,
+                          );
                           return (
                             <span
                               className="pointer-events-none absolute -translate-y-full rounded bg-blue-600/90 px-1.5 py-0.5 text-[11px] font-medium text-white"
@@ -334,7 +355,9 @@ export function FormTemplateDesigner({
                 : "rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
             }
           >
-            {mode === "signature" ? "Click the form to place the signature…" : "+ Place signature box"}
+            {mode === "signature"
+              ? "Click the form to place the signature…"
+              : "+ Place signature box"}
           </button>
           <button
             type="button"

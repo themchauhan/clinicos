@@ -1,10 +1,12 @@
 "use client";
 
 import { useActionState, useRef } from "react";
+import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import type { PatientFormState } from "@/app/dashboard/patients/actions";
 import type { PatientGender } from "@/types/database";
 import { Spinner } from "@/components/spinner";
+import { GUARDIAN_RELATIONS, type GuardianRelation } from "@/lib/patients/guardian";
 
 const initialState: PatientFormState = {};
 
@@ -14,6 +16,7 @@ export interface PatientFormDefaults {
   dob?: string | null;
   approximateAgeYears?: number | null;
   guardianName?: string | null;
+  guardianRelation?: GuardianRelation | null;
   gender?: PatientGender | null;
   address?: string | null;
 }
@@ -36,10 +39,12 @@ export function PatientForm({
   action,
   defaults,
   submitLabel,
+  cancelHref = "/dashboard/patients",
 }: {
   action: (prevState: PatientFormState, formData: FormData) => Promise<PatientFormState>;
   defaults?: PatientFormDefaults;
   submitLabel: string;
+  cancelHref?: string;
 }) {
   const [state, formAction] = useActionState(action, initialState);
   const formRef = useRef<HTMLFormElement>(null);
@@ -72,40 +77,49 @@ export function PatientForm({
   const fieldsKey = state.values ? "restored" : "initial";
 
   return (
-    <form ref={formRef} action={formAction} className="flex max-w-lg flex-col gap-4">
+    <form
+      ref={formRef}
+      action={formAction}
+      className="flex max-w-2xl flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+    >
       <input ref={confirmedInputRef} type="hidden" name="confirmed" defaultValue="false" />
 
-      <div key={fieldsKey} className="contents">
-        <Field label="Name" name="name" required defaultValue={effectiveDefaults?.name} />
-        <Field
-          label="Mobile"
-          name="mobile"
-          type="tel"
-          pattern="\+?[0-9\s\-\(\)]{7,20}"
-          title="Enter a valid mobile number (digits only)"
-          hint="Digits only, e.g. 9876543210"
-          defaultValue={effectiveDefaults?.mobile ?? undefined}
-        />
-        <Field
-          label="Date of birth"
-          name="dob"
-          type="date"
-          defaultValue={effectiveDefaults?.dob ?? undefined}
-        />
-        <Field
-          label="Approximate age (years) — only if DOB is unknown"
-          name="approximateAgeYears"
-          type="number"
-          min={0}
-          defaultValue={effectiveDefaults?.approximateAgeYears ?? undefined}
-        />
-        <Field
-          label="Guardian name"
-          name="guardianName"
-          defaultValue={effectiveDefaults?.guardianName ?? undefined}
-        />
+      <div key={fieldsKey} className="grid gap-x-4 gap-y-4 sm:grid-cols-6">
+        <div className="sm:col-span-3">
+          <Field label="Name" name="name" required defaultValue={effectiveDefaults?.name} />
+        </div>
+        <div className="sm:col-span-3">
+          <Field
+            label="Mobile"
+            name="mobile"
+            type="tel"
+            pattern="\+?[0-9\s\-\(\)]{7,20}"
+            title="Enter a valid mobile number (digits only)"
+            placeholder="e.g. 9876543210"
+            defaultValue={effectiveDefaults?.mobile ?? undefined}
+          />
+        </div>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="sm:col-span-2">
+          <Field
+            label="Date of birth"
+            name="dob"
+            type="date"
+            defaultValue={effectiveDefaults?.dob ?? undefined}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Field
+            label="Approximate age (years) — only if DOB is unknown"
+            displayLabel="Approx. age (years)"
+            name="approximateAgeYears"
+            type="number"
+            min={0}
+            placeholder="If DOB unknown"
+            defaultValue={effectiveDefaults?.approximateAgeYears ?? undefined}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
           <label htmlFor="gender" className="text-sm font-medium">
             Gender
           </label>
@@ -113,7 +127,7 @@ export function PatientForm({
             id="gender"
             name="gender"
             defaultValue={effectiveDefaults?.gender ?? ""}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+            className={INPUT_CLASS}
           >
             <option value="">Not specified</option>
             <option value="MALE">Male</option>
@@ -122,11 +136,41 @@ export function PatientForm({
           </select>
         </div>
 
-        <Field
-          label="Address"
-          name="address"
-          defaultValue={effectiveDefaults?.address ?? undefined}
-        />
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <label htmlFor="guardianRelation" className="text-sm font-medium">
+            Relationship
+          </label>
+          <select
+            id="guardianRelation"
+            name="guardianRelation"
+            defaultValue={effectiveDefaults?.guardianRelation ?? ""}
+            className={INPUT_CLASS}
+          >
+            <option value="">Not specified</option>
+            {GUARDIAN_RELATIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="sm:col-span-4">
+          <Field
+            label="Guardian name"
+            name="guardianName"
+            placeholder="Printed on forms, e.g. W/O Anand"
+            defaultValue={effectiveDefaults?.guardianName ?? undefined}
+          />
+        </div>
+
+        <div className="sm:col-span-6">
+          <Field
+            label="Address"
+            name="address"
+            multiline
+            defaultValue={effectiveDefaults?.address ?? undefined}
+          />
+        </div>
       </div>
 
       {state.duplicates && state.duplicates.length > 0 ? (
@@ -156,7 +200,15 @@ export function PatientForm({
         </p>
       ) : null}
 
-      <SubmitButton label={submitLabel} />
+      <div className="flex items-center gap-3 border-t border-slate-100 pt-4">
+        <SubmitButton label={submitLabel} />
+        <Link
+          href={cancelHref}
+          className="rounded-md px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          Cancel
+        </Link>
+      </div>
     </form>
   );
 }
@@ -169,7 +221,9 @@ function Field({
   min,
   pattern,
   title,
-  hint,
+  displayLabel,
+  placeholder,
+  multiline,
   defaultValue,
 }: {
   label: string;
@@ -179,26 +233,45 @@ function Field({
   min?: number;
   pattern?: string;
   title?: string;
-  hint?: string;
+  displayLabel?: string;
+  placeholder?: string;
+  multiline?: boolean;
   defaultValue?: string | number;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className="text-sm font-medium">
-        {label}
+      <label
+        htmlFor={name}
+        className={`text-sm font-medium${required ? "after:ml-0.5 after:text-red-500 after:content-['*']" : ""}`}
+      >
+        {displayLabel ?? label}
       </label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        required={required}
-        min={min}
-        pattern={pattern}
-        title={title}
-        defaultValue={defaultValue}
-        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 user-invalid:border-red-400 user-invalid:focus:border-red-400"
-      />
-      {hint ? <p className="text-xs text-zinc-500 dark:text-zinc-400">{hint}</p> : null}
+      {multiline ? (
+        <textarea
+          id={name}
+          name={name}
+          rows={2}
+          placeholder={placeholder}
+          defaultValue={defaultValue}
+          className={INPUT_CLASS}
+        />
+      ) : (
+        <input
+          id={name}
+          name={name}
+          type={type}
+          placeholder={placeholder}
+          required={required}
+          min={min}
+          pattern={pattern}
+          title={title}
+          defaultValue={defaultValue}
+          className={INPUT_CLASS}
+        />
+      )}
     </div>
   );
 }
+
+const INPUT_CLASS =
+  "rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 user-invalid:border-red-400 user-invalid:focus:border-red-400";
