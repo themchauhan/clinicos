@@ -5,6 +5,7 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole, requireActiveTenant } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { generateScanToken, hashScanToken } from "@/lib/scan/token";
+import { getAppUrl } from "@/lib/app-url";
 
 export type CreateScanSessionResult =
   | { sessionId: string; qrDataUrl: string; scanUrl: string; pairedDevice?: false }
@@ -67,7 +68,7 @@ export async function createScanSession(input: {
     return { sessionId: created.id, pairedDevice: true };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getAppUrl();
   const scanUrl = `${appUrl}/scan#${rawToken}`;
   const qrDataUrl = await QRCode.toDataURL(scanUrl);
 
@@ -123,7 +124,7 @@ export async function createFormSignSession(input: {
     return { sessionId: created.id, pairedDevice: true };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getAppUrl();
   const scanUrl = `${appUrl}/scan#${rawToken}`;
   const qrDataUrl = await QRCode.toDataURL(scanUrl);
 

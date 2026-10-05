@@ -35,3 +35,22 @@
 - Create, view, and list visits; visit is always linked to the
   correct patient and hospital
 - A visit's payment status is visible and accurate
+
+## Manual test steps — later additions
+
+Run once against a local instance:
+
+- **Patient form:** `/dashboard/patients/new` fits one screen; pick
+  Relationship "W/O" + a guardian name, save; the profile and list show
+  "W/O <name>"; relationship without a name is rejected.
+- **Patients list:** opens on Today; "All patients" lists everyone;
+  searching from either tab finds patients registered earlier.
+- **Visits list:** Today / Past / All tabs each show the right set.
+- **Patient ID prefix:** a new patient gets `<PREFIX>NNN`; as platform
+  admin change a centre's prefix once (existing IDs relabel), the field
+  then shows as locked.
+- **Required forms:** Settings → Forms → mark a form Required for a USG
+  visit type; create a new visit of that type: the form shows
+  "Required — not filled" above the upload row, the visit counts as
+  Documents pending (dashboard, USG board, Pending documents); sign the
+  form and it clears. A female patient on a USG visit shows the hint.

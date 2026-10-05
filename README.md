@@ -170,10 +170,21 @@ e2e/                 Playwright e2e tests
 
 ## Patients (Phase 2)
 
-- Patient codes (`000123`) are a per-hospital sequence generated
-  atomically by a `next_patient_code()` Postgres function (`INSERT ...
-ON CONFLICT DO UPDATE`) — safe under concurrent registrations, see
-  `supabase/migrations/20260922000005_patients.sql`.
+- Patient codes (`CLC001`) are a hospital prefix plus a per-hospital
+  sequence (at least 3 digits, growing past 999) generated atomically
+  by a `next_patient_code()` Postgres function (`INSERT ... ON CONFLICT
+  DO UPDATE`) — safe under concurrent registrations, see
+  `supabase/migrations/20260922000005_patients.sql` and
+  `20261004000026_patient_id_prefix.sql`.
+- The prefix (`hospitals.patient_id_prefix`) is suggested from the
+  centre's name on creation and can be changed **once** by a platform
+  admin (centre page in the admin console); that one change relabels
+  the centre's existing patients, then locks.
+- The patients list opens on **Today** (registered or seen today, via
+  the `patients_for_day` function); **All patients** is on demand, and
+  search always covers everyone. The guardian relationship (S/O, D/O,
+  W/O, H/O, C/O) is stored with the guardian name and is available to
+  PDF forms as `patient.guardian_relation` / `patient.guardian_full`.
 - Search (`/dashboard/patients?q=...`) matches name (fuzzy, via
   `pg_trgm`), mobile, and patient code through a `search_patients` DB
   function; RLS still applies since it's invoker-rights, not
@@ -377,7 +388,29 @@ ON CONFLICT DO UPDATE`) — safe under concurrent registrations, see
   policies — squarely a Phase 9 (security hardening) task, not this
   one.
 
+## Required forms & pending requirements
+
+- Fillable forms can be marked **Required** per visit type (Settings →
+  Forms). New visits snapshot the rule (`visit_form_requirements`);
+  a form is satisfied only by a signed copy on the same visit.
+- "Pending" is computed in the database by the
+  `pending_visit_requirements` view (RLS-scoped via `security_invoker`)
+  and used by the dashboard count, the USG board and the Pending
+  documents page, so it stays correct and cheap however many documents
+  exist. A visit-scope document from an earlier visit does not satisfy
+  a later one; patient-scope ones (ID Proof) do.
+
 ## Deployment notes
+
+- `NEXT_PUBLIC_APP_URL` must be set to the deployment's public origin
+  (no trailing slash) — password-reset emails and the phone-scan /
+  device-pairing QR codes are built from it. In production the app
+  refuses to guess (it falls back to Vercel's production URL if
+  present, otherwise errors). Also add that URL under Supabase →
+  Authentication → URL Configuration (Site URL and Redirect URLs).
+- `next.config.ts` sends baseline security headers (frame denial,
+  nosniff, referrer policy, HSTS, permissions policy). There is no CSP
+  yet; adding one needs testing with the PDF viewer.
 
 Not yet configured — deployment to Vercel (Mumbai/`bom1` region) lands
 once more of the core document workflow exists (Phase 4+).

@@ -59,37 +59,11 @@ export default async function UsgDashboardPage() {
   ]);
 
   const visitIds = (visits ?? []).map((v) => v.id);
-  const [{ data: requirements }, { data: allDocs }, { data: formRequirements }] = await Promise.all(
-    [
-      supabase
-        .from("visit_document_requirements")
-        .select("visit_id, document_type_id, required")
-        .in("visit_id", visitIds)
-        .eq("required", true),
-      supabase
-        .from("documents")
-        .select("patient_id, visit_id, document_type_id, form_template_id")
-        .is("deleted_at", null),
-      supabase
-        .from("visit_form_requirements")
-        .select("visit_id, form_template_id")
-        .in("visit_id", visitIds)
-        .eq("required", true),
-    ],
-  );
-
-  const signedFormsByVisit = new Set(
-    (allDocs ?? [])
-      .filter((d) => d.visit_id && d.form_template_id)
-      .map((d) => `${d.visit_id}:${d.form_template_id}`),
-  );
-
-  const fulfilledByVisit = new Set(
-    (allDocs ?? []).filter((d) => d.visit_id).map((d) => `${d.visit_id}:${d.document_type_id}`),
-  );
-  const fulfilledByPatient = new Set(
-    (allDocs ?? []).map((d) => `${d.patient_id}:${d.document_type_id}`),
-  );
+  const { data: pendingRows } = await supabase
+    .from("pending_visit_requirements")
+    .select("visit_id")
+    .in("visit_id", visitIds);
+  const visitsWithPending = new Set((pendingRows ?? []).map((r) => r.visit_id));
 
   const columns: Record<Column, typeof visits> = {
     waiting: [],
@@ -107,18 +81,7 @@ export default async function UsgDashboardPage() {
       columns.inProgress!.push(visit);
       continue;
     }
-    const patientId = visit.patients!.id;
-    const missingDocument = (requirements ?? [])
-      .filter((r) => r.visit_id === visit.id)
-      .some(
-        (r) =>
-          !fulfilledByVisit.has(`${visit.id}:${r.document_type_id}`) &&
-          !fulfilledByPatient.has(`${patientId}:${r.document_type_id}`),
-      );
-    const missingForm = (formRequirements ?? [])
-      .filter((r) => r.visit_id === visit.id)
-      .some((r) => !signedFormsByVisit.has(`${visit.id}:${r.form_template_id}`));
-    const missingRequired = missingDocument || missingForm;
+    const missingRequired = visitsWithPending.has(visit.id);
     if (missingRequired) {
       columns.documentsPending!.push(visit);
     } else {

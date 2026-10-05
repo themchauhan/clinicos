@@ -321,6 +321,13 @@ const HOSPITAL_PURGE_DELETE_ORDER = [
   "subscription_payments",
   "audit_logs",
   "visits",
+  // Fillable forms and the device/profile rows hang off the hospital
+  // with RESTRICT too. form_templates comes after documents/visits
+  // (both reference it); its fields and the per-visit form
+  // requirements cascade.
+  "paired_devices",
+  "form_templates",
+  "hospital_form_profile",
   "doctors",
   "document_types",
   "visit_types",

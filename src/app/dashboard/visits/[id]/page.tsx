@@ -48,6 +48,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
     { data: hospitalRow },
     { data: hospitalFormProfile },
     { data: formRequirements },
+    { data: patientDocumentTypeIds },
   ] = await Promise.all([
     supabase
       .from("visit_document_requirements")
@@ -83,6 +84,11 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
       .from("visit_form_requirements")
       .select("form_template_id, required")
       .eq("visit_id", visit.id),
+    supabase
+      .from("documents")
+      .select("document_type_id, document_types(scope)")
+      .eq("patient_id", visit.patients!.id)
+      .is("deleted_at", null),
   ]);
   const pairedDevice = pairedDeviceRow
     ? {
@@ -92,17 +98,17 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
       }
     : null;
 
-  // A requirement is fulfilled by any document of that type attached
-  // to this visit (VISIT-scope docs) OR to this patient at all
-  // (PATIENT-scope docs like ID Proof, captured once and reused).
-  const { data: patientDocumentTypeIds } = await supabase
-    .from("documents")
-    .select("document_type_id")
-    .eq("patient_id", visit.patients!.id)
-    .is("deleted_at", null);
+  // A requirement is fulfilled by a document of that type attached to
+  // THIS visit, or -- only for PATIENT-scope types like ID Proof,
+  // captured once and reused -- by any such document on the patient.
+  // Same rule as the pending_visit_requirements view behind the
+  // dashboard and Pending documents list. (A USG report from an earlier
+  // visit must not satisfy this one.)
   const fulfilledTypeIds = new Set([
     ...(documents ?? []).map((d) => d.document_type_id),
-    ...(patientDocumentTypeIds ?? []).map((d) => d.document_type_id),
+    ...(patientDocumentTypeIds ?? [])
+      .filter((d) => d.document_types?.scope === "PATIENT")
+      .map((d) => d.document_type_id),
   ]);
 
   const { data: pcPndtTypes } = await supabase

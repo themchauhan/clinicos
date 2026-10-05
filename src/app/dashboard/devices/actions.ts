@@ -11,6 +11,7 @@ import {
   generateScanToken as generateDeviceToken,
   hashScanToken as hashDeviceToken,
 } from "@/lib/scan/token";
+import { getAppUrl } from "@/lib/app-url";
 
 export interface StartDevicePairingResult {
   deviceId: string;
@@ -45,7 +46,7 @@ export async function startDevicePairing(): Promise<StartDevicePairingResult | {
     return { error: "Could not start pairing. Try again." };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getAppUrl();
   const pairUrl = `${appUrl}/device/connect#${rawToken}`;
   const qrDataUrl = await QRCode.toDataURL(pairUrl);
 

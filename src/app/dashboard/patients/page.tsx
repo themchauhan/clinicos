@@ -29,23 +29,15 @@ export default async function PatientsPage({
   const todayDate = todayInAppTimezone();
   const todayStart = new Date(`${todayDate}T00:00:00+05:30`).toISOString();
   const dayArgs = { p_date: todayDate, p_day_start: todayStart };
-  const { count: allCount } = await supabase
-    .from("patients")
-    .select("id", { count: "exact", head: true })
-    .is("deleted_at", null);
-  const { count: todayCount } = await supabase.rpc("patients_for_day", dayArgs, {
-    count: "exact",
-    head: true,
-  });
 
   // Search results aren't paginated -- search_patients already caps
   // itself at 50 best matches server-side (see its own migration), so
   // a search narrow enough to matter never needs a second page.
-  let patients: PatientRowData[] | null;
-  let totalCount: number | null = null;
-  if (query) {
-    ({ data: patients } = await supabase.rpc("search_patients", { p_query: query }));
-  } else {
+  const listQuery = async (): Promise<{ data: PatientRowData[] | null; count: number | null }> => {
+    if (query) {
+      const { data } = await supabase.rpc("search_patients", { p_query: query });
+      return { data, count: null };
+    }
     const result = await (
       when === "today"
         ? supabase.rpc("patients_for_day", dayArgs, { count: "exact" })
@@ -53,9 +45,18 @@ export default async function PatientsPage({
     )
       .order("created_at", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-    patients = result.data;
-    totalCount = result.count;
-  }
+    return { data: result.data, count: result.count };
+  };
+
+  // Independent queries, so run them together rather than one after
+  // another (each is a database round trip).
+  const [{ count: allCount }, { count: todayCount }, list] = await Promise.all([
+    supabase.from("patients").select("id", { count: "exact", head: true }).is("deleted_at", null),
+    supabase.rpc("patients_for_day", dayArgs, { count: "exact", head: true }),
+    listQuery(),
+  ]);
+  const patients = list.data;
+  const totalCount = list.count;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">

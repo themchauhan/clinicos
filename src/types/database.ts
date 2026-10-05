@@ -714,7 +714,26 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      pending_visit_requirements: {
+        Row: {
+          id: string;
+          visit_id: string;
+          patient_id: string;
+          visit_date: string;
+          token_number: number;
+          patient_name: string;
+          patient_code: string;
+          missing_name: string;
+          is_form: boolean;
+        };
+        Relationships: [];
+      };
+      visits_with_pending_requirements: {
+        Row: { visit_id: string };
+        Relationships: [];
+      };
+    };
     Functions: {
       current_profile: {
         Args: Record<string, never>;

@@ -20,55 +20,17 @@ export default async function DashboardPage() {
     { count: patientCount },
     { count: todayVisitCount },
     { data: enabledModules },
-    { data: pendingRequirements },
-    { data: fulfilledDocs },
-    { data: pendingFormRequirements },
+    { count: pendingVisitCount },
   ] = await Promise.all([
     supabase.from("patients").select("id", { count: "exact", head: true }).is("deleted_at", null),
     supabase.from("visits").select("id", { count: "exact", head: true }).eq("visit_date", today),
     supabase.from("hospital_modules").select("module"),
-    supabase
-      .from("visit_document_requirements")
-      .select("visit_id, document_type_id, visits!inner(patient_id, status)")
-      .eq("required", true)
-      .neq("visits.status", "CANCELLED"),
-    supabase
-      .from("documents")
-      .select("patient_id, visit_id, document_type_id, form_template_id")
-      .is("deleted_at", null),
-    supabase
-      .from("visit_form_requirements")
-      .select("visit_id, form_template_id, visits!inner(status)")
-      .eq("required", true)
-      .neq("visits.status", "CANCELLED"),
-  ]);
-
-  const fulfilledByVisit = new Set(
-    (fulfilledDocs ?? [])
-      .filter((d) => d.visit_id)
-      .map((d) => `${d.visit_id}:${d.document_type_id}`),
-  );
-  const fulfilledByPatient = new Set(
-    (fulfilledDocs ?? []).map((d) => `${d.patient_id}:${d.document_type_id}`),
-  );
-  // Forms are only ever fulfilled on the same visit (see the
-  // form-requirements migration), never carried over from another one.
-  const signedFormsByVisit = new Set(
-    (fulfilledDocs ?? [])
-      .filter((d) => d.visit_id && d.form_template_id)
-      .map((d) => `${d.visit_id}:${d.form_template_id}`),
-  );
-  const pendingVisitIds = new Set([
-    ...(pendingRequirements ?? [])
-      .filter(
-        (r) =>
-          !fulfilledByVisit.has(`${r.visit_id}:${r.document_type_id}`) &&
-          !fulfilledByPatient.has(`${r.visits!.patient_id}:${r.document_type_id}`),
-      )
-      .map((r) => r.visit_id),
-    ...(pendingFormRequirements ?? [])
-      .filter((r) => !signedFormsByVisit.has(`${r.visit_id}:${r.form_template_id}`))
-      .map((r) => r.visit_id),
+    // Computed in the database (see the pending_visit_requirements
+    // migration) rather than by diffing every document in the app.
+    supabase.from("visits_with_pending_requirements").select("visit_id", {
+      count: "exact",
+      head: true,
+    }),
   ]);
 
   const modules = (enabledModules ?? []).map((m) => m.module);
@@ -79,7 +41,7 @@ export default async function DashboardPage() {
     { label: "Today's visits", value: todayVisitCount ?? 0, href: "/dashboard/patients" },
     {
       label: "Documents pending",
-      value: pendingVisitIds.size,
+      value: pendingVisitCount ?? 0,
       href: "/dashboard/documents",
     },
   ];
