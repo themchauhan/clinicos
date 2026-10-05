@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { setRequirement } from "@/app/dashboard/settings/actions";
+import { setFormRequirement, setRequirement } from "@/app/dashboard/settings/actions";
 
 interface VisitTypeRow {
   id: string;
@@ -41,17 +41,20 @@ function Cell({
   visitTypeName,
   documentTypeId,
   required,
+  kind,
 }: {
   visitTypeId: string;
   visitTypeName: string;
   documentTypeId: string;
   required: boolean | null;
+  kind: "document" | "form";
 }) {
   const [pending, startTransition] = useTransition();
 
   function handleClick() {
     startTransition(async () => {
-      await setRequirement(visitTypeId, documentTypeId, nextState(required));
+      const set = kind === "form" ? setFormRequirement : setRequirement;
+      await set(visitTypeId, documentTypeId, nextState(required));
     });
   }
 
@@ -78,10 +81,13 @@ export function RequirementsMatrix({
   visitTypes,
   documentTypes,
   requirements,
+  kind = "document",
 }: {
   visitTypes: VisitTypeRow[];
+  /** The rows of the matrix: document types, or form templates when kind="form". */
   documentTypes: DocumentTypeRow[];
   requirements: RequirementRow[];
+  kind?: "document" | "form";
 }) {
   const activeVisitTypes = visitTypes.filter((vt) => vt.active);
   const activeDocumentTypes = documentTypes.filter((dt) => dt.active);
@@ -89,7 +95,8 @@ export function RequirementsMatrix({
   if (activeVisitTypes.length === 0 || activeDocumentTypes.length === 0) {
     return (
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Add at least one active visit type and one active document type first.
+        Add at least one active visit type and one active{" "}
+        {kind === "form" ? "form" : "document type"} first.
       </p>
     );
   }
@@ -103,7 +110,9 @@ export function RequirementsMatrix({
       <table className="text-left text-sm">
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-            <th className="py-2 pr-4 font-medium whitespace-nowrap">Document type</th>
+            <th className="py-2 pr-4 font-medium whitespace-nowrap">
+              {kind === "form" ? "Form" : "Document type"}
+            </th>
             {activeVisitTypes.map((vt) => (
               <th key={vt.id} className="px-2 py-2 font-medium whitespace-nowrap">
                 {vt.name}
@@ -122,6 +131,7 @@ export function RequirementsMatrix({
                     visitTypeName={vt.name}
                     documentTypeId={dt.id}
                     required={requirementByKey.get(`${vt.id}:${dt.id}`) ?? null}
+                    kind={kind}
                   />
                 </td>
               ))}

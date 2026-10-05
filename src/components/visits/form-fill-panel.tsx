@@ -28,6 +28,13 @@ export interface FormTemplateOption {
   description: string | null;
 }
 
+/** Where a form stands on this visit: `required` is null when the visit
+ * type has no rule for it; `signed` when a filled copy is already attached. */
+export interface FormStatus {
+  required: boolean | null;
+  signed: boolean;
+}
+
 export interface FormTemplateFieldOption {
   fieldKey: string;
   label: string;
@@ -51,6 +58,8 @@ export function FormFillPanel({
   doctor,
   revalidate,
   pairedDevice,
+  statusByTemplate = {},
+  hint = null,
 }: {
   templates: FormTemplateOption[];
   fieldsByTemplate: Record<string, FormTemplateFieldOption[]>;
@@ -61,6 +70,9 @@ export function FormFillPanel({
   doctor: DoctorFieldSource;
   revalidate: string;
   pairedDevice: PairedDeviceInfo | null;
+  statusByTemplate?: Record<string, FormStatus>;
+  /** Soft, dismissible-by-ignoring nudge shown above the list. */
+  hint?: string | null;
 }) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -171,18 +183,12 @@ export function FormFillPanel({
   return (
     <div className="flex flex-col gap-3">
       {!selected ? (
-        <div className="flex flex-wrap gap-2">
-          {templates.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => selectTemplate(t.id)}
-              className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-            >
-              Fill &amp; sign: {t.name}
-            </button>
-          ))}
-        </div>
+        <FormList
+          templates={templates}
+          statusByTemplate={statusByTemplate}
+          hint={hint}
+          onFill={selectTemplate}
+        />
       ) : (
         <div className="flex flex-col gap-4 rounded-md border border-zinc-300 p-4 dark:border-zinc-700">
           <div className="flex items-center justify-between">
@@ -385,5 +391,94 @@ export function FormFillPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/** The "Forms for this visit" list: required forms first with their
+ * status, everything else tucked under "Other forms" (open when a hint
+ * says forms are probably needed anyway). */
+function FormList({
+  templates,
+  statusByTemplate,
+  hint,
+  onFill,
+}: {
+  templates: FormTemplateOption[];
+  statusByTemplate: Record<string, FormStatus>;
+  hint: string | null;
+  onFill: (templateId: string) => void;
+}) {
+  const relevant = templates.filter((t) => statusByTemplate[t.id]?.required != null);
+  const others = templates.filter((t) => statusByTemplate[t.id]?.required == null);
+
+  return (
+    <div className="flex flex-col gap-3">
+      {hint ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {hint}
+        </p>
+      ) : null}
+
+      {relevant.length > 0 ? (
+        <ul className="flex flex-col gap-2">
+          {relevant.map((t) => (
+            <FormItem key={t.id} template={t} status={statusByTemplate[t.id]!} onFill={onFill} />
+          ))}
+        </ul>
+      ) : null}
+
+      {others.length > 0 ? (
+        <details open={Boolean(hint) || relevant.length === 0} className="group">
+          <summary className="cursor-pointer text-sm text-zinc-600 select-none dark:text-zinc-400">
+            {relevant.length > 0 ? "Other forms" : "Forms"} ({others.length})
+          </summary>
+          <ul className="mt-2 flex flex-col gap-2">
+            {others.map((t) => (
+              <FormItem
+                key={t.id}
+                template={t}
+                status={statusByTemplate[t.id] ?? { required: null, signed: false }}
+                onFill={onFill}
+              />
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function FormItem({
+  template,
+  status,
+  onFill,
+}: {
+  template: FormTemplateOption;
+  status: FormStatus;
+  onFill: (templateId: string) => void;
+}) {
+  const badge = status.signed
+    ? { text: "Signed ✓", cls: "text-emerald-700 dark:text-emerald-400" }
+    : status.required
+      ? { text: "Required — not filled", cls: "text-amber-700 dark:text-amber-400" }
+      : { text: "Not filled", cls: "text-zinc-500 dark:text-zinc-400" };
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+      <div>
+        <p className="text-sm font-medium">{template.name}</p>
+        <p className={`text-xs ${badge.cls}`}>{badge.text}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onFill(template.id)}
+        className={
+          status.signed
+            ? "rounded-md border border-zinc-300 px-3 py-1.5 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            : "rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-teal-700"
+        }
+      >
+        {status.signed ? "Fill again" : "Fill & sign"}
+      </button>
+    </li>
   );
 }

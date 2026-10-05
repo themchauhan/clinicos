@@ -23,18 +23,25 @@ export default async function PendingDocumentsPage({
 
   const supabase = await createClient();
 
-  const [{ data: requirements }, { data: documents }] = await Promise.all([
-    supabase
-      .from("visit_document_requirements")
-      .select(
-        "id, document_type_id, document_type_name, required, visits(id, token_number, visit_date, patients(id, name, patient_code))",
-      )
-      .eq("required", true),
-    supabase
-      .from("documents")
-      .select("patient_id, visit_id, document_type_id")
-      .is("deleted_at", null),
-  ]);
+  const [{ data: requirements }, { data: documents }, { data: formRequirements }] =
+    await Promise.all([
+      supabase
+        .from("visit_document_requirements")
+        .select(
+          "id, document_type_id, document_type_name, required, visits(id, token_number, visit_date, patients(id, name, patient_code))",
+        )
+        .eq("required", true),
+      supabase
+        .from("documents")
+        .select("patient_id, visit_id, document_type_id, form_template_id")
+        .is("deleted_at", null),
+      supabase
+        .from("visit_form_requirements")
+        .select(
+          "id, form_template_id, form_template_name, visits(id, token_number, visit_date, status, patients(id, name, patient_code))",
+        )
+        .eq("required", true),
+    ]);
 
   const fulfilledByVisit = new Set(
     (documents ?? []).filter((d) => d.visit_id).map((d) => `${d.visit_id}:${d.document_type_id}`),
@@ -43,13 +50,45 @@ export default async function PendingDocumentsPage({
     (documents ?? []).map((d) => `${d.patient_id}:${d.document_type_id}`),
   );
 
-  const pending = (requirements ?? []).filter((r) => {
-    const visit = r.visits!;
-    const patient = visit.patients!;
-    const viaVisit = fulfilledByVisit.has(`${visit.id}:${r.document_type_id}`);
-    const viaPatient = fulfilledByPatient.has(`${patient.id}:${r.document_type_id}`);
-    return !viaVisit && !viaPatient;
-  });
+  const signedFormsByVisit = new Set(
+    (documents ?? [])
+      .filter((d) => d.visit_id && d.form_template_id)
+      .map((d) => `${d.visit_id}:${d.form_template_id}`),
+  );
+
+  // Missing documents and unsigned required forms in one list. Forms are
+  // only ever fulfilled on their own visit, and a cancelled visit no
+  // longer needs its forms.
+  const pending = [
+    ...(requirements ?? [])
+      .filter((r) => {
+        const visit = r.visits!;
+        const patient = visit.patients!;
+        const viaVisit = fulfilledByVisit.has(`${visit.id}:${r.document_type_id}`);
+        const viaPatient = fulfilledByPatient.has(`${patient.id}:${r.document_type_id}`);
+        return !viaVisit && !viaPatient;
+      })
+      .map((r) => ({ id: r.id, visits: r.visits, missingName: r.document_type_name })),
+    ...(formRequirements ?? [])
+      .filter(
+        (r) =>
+          r.visits &&
+          r.visits.status !== "CANCELLED" &&
+          !signedFormsByVisit.has(`${r.visits.id}:${r.form_template_id}`),
+      )
+      .map((r) => ({
+        id: r.id,
+        visits: r.visits,
+        missingName: `${r.form_template_name} (form)`,
+      })),
+  ];
+  // Newest visits first, so what needs doing today isn't buried behind
+  // older leftovers.
+  pending.sort(
+    (a, b) =>
+      b.visits!.visit_date.localeCompare(a.visits!.visit_date) ||
+      b.visits!.token_number - a.visits!.token_number,
+  );
 
   // Fulfillment depends on a join across two separately-fetched tables,
   // so pagination happens here in-memory (over the already-filtered
@@ -93,7 +132,7 @@ export default async function PendingDocumentsPage({
                     <dt className="text-zinc-400 dark:text-zinc-500">Date</dt>
                     <dd>{visit.visit_date}</dd>
                     <dt className="text-zinc-400 dark:text-zinc-500">Missing</dt>
-                    <dd className="text-amber-700 dark:text-amber-400">{r.document_type_name}</dd>
+                    <dd className="text-amber-700 dark:text-amber-400">{r.missingName}</dd>
                   </dl>
                 </div>
               );
@@ -129,9 +168,7 @@ export default async function PendingDocumentsPage({
                       </Link>
                     </td>
                     <td className="py-2 text-zinc-600 dark:text-zinc-400">{visit.visit_date}</td>
-                    <td className="py-2 text-amber-700 dark:text-amber-400">
-                      {r.document_type_name}
-                    </td>
+                    <td className="py-2 text-amber-700 dark:text-amber-400">{r.missingName}</td>
                   </tr>
                 );
               })}

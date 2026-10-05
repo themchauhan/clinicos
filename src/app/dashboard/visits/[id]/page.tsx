@@ -11,7 +11,7 @@ import { DocumentUploadPanel } from "@/components/documents/document-upload-pane
 import { DocumentList } from "@/components/documents/document-list";
 import { StatusTransitionButtons } from "@/components/visits/status-transition-buttons";
 import { PrintSlipButton } from "@/components/visits/print-slip-button";
-import { FormFillPanel } from "@/components/visits/form-fill-panel";
+import { FormFillPanel, type FormStatus } from "@/components/visits/form-fill-panel";
 import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Visit — ClinicOS" };
@@ -26,7 +26,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
   const { data: visit } = await supabase
     .from("visits")
     .select(
-      "*, patients(id, name, patient_code, guardian_name, guardian_relation, address, mobile, dob, approximate_age_years, gender), visit_types(name), doctors(name, registration_no), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
+      "*, patients(id, name, patient_code, guardian_name, guardian_relation, address, mobile, dob, approximate_age_years, gender), visit_types(name, module), doctors(name, registration_no), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -47,6 +47,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
     { data: formTemplates },
     { data: hospitalRow },
     { data: hospitalFormProfile },
+    { data: formRequirements },
   ] = await Promise.all([
     supabase
       .from("visit_document_requirements")
@@ -60,7 +61,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
     supabase
       .from("documents")
       .select(
-        "id, file_name, file_type, created_at, document_type_id, document_types(name, sensitive), form_templates(name, sensitive)",
+        "id, file_name, file_type, created_at, document_type_id, form_template_id, document_types(name, sensitive), form_templates(name, sensitive)",
       )
       .eq("visit_id", visit.id)
       .is("deleted_at", null)
@@ -78,6 +79,10 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
       .from("hospital_form_profile")
       .select("centre_name, centre_address, registration_no")
       .maybeSingle(),
+    supabase
+      .from("visit_form_requirements")
+      .select("form_template_id, required")
+      .eq("visit_id", visit.id),
   ]);
   const pairedDevice = pairedDeviceRow
     ? {
@@ -108,6 +113,32 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
       (requirements ?? []).map((r) => r.document_type_id),
     )
     .eq("pc_pndt_form", true);
+
+  // Forms: a requirement is met by a signed copy attached to THIS visit
+  // (never carried over from an earlier visit). Gender only drives a
+  // soft hint -- it never makes a form required or blocks anything.
+  const signedTemplateIds = new Set(
+    (documents ?? []).map((d) => d.form_template_id).filter((v): v is string => v !== null),
+  );
+  const requirementByTemplate = new Map(
+    (formRequirements ?? []).map((r) => [r.form_template_id, r.required]),
+  );
+  const statusByTemplate: Record<string, FormStatus> = Object.fromEntries(
+    (formTemplates ?? []).map((t) => [
+      t.id,
+      {
+        required: requirementByTemplate.has(t.id) ? requirementByTemplate.get(t.id)! : null,
+        signed: signedTemplateIds.has(t.id),
+      },
+    ]),
+  );
+  const unsignedForms = (formTemplates ?? []).filter((t) => !statusByTemplate[t.id]!.signed);
+  const formHint =
+    visit.patients!.gender === "FEMALE" &&
+    visit.visit_types!.module === "USG" &&
+    unsignedForms.length > 0
+      ? "Female patient on a USG visit — PC-PNDT forms (e.g. Form G) are usually needed before the scan. Check the forms below."
+      : null;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
@@ -282,18 +313,9 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
           </ul>
         ) : null}
 
-        <div className="mt-4">
-          <DocumentUploadPanel
-            patientId={visit.patients!.id}
-            visitId={visit.id}
-            revalidate={`/dashboard/visits/${visit.id}`}
-            documentTypes={visitDocumentTypes ?? []}
-            pairedDevice={pairedDevice}
-          />
-        </div>
-
         {formTemplates && formTemplates.length > 0 ? (
-          <div className="mt-6">
+          <div className="mt-4">
+            <h3 className="mb-2 text-sm font-semibold">Forms for this visit</h3>
             <FormFillPanel
               templates={formTemplates.map((t) => ({
                 id: t.id,
@@ -336,9 +358,21 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
               }}
               revalidate={`/dashboard/visits/${visit.id}`}
               pairedDevice={pairedDevice}
+              statusByTemplate={statusByTemplate}
+              hint={formHint}
             />
           </div>
         ) : null}
+
+        <div className="mt-6">
+          <DocumentUploadPanel
+            patientId={visit.patients!.id}
+            visitId={visit.id}
+            revalidate={`/dashboard/visits/${visit.id}`}
+            documentTypes={visitDocumentTypes ?? []}
+            pairedDevice={pairedDevice}
+          />
+        </div>
 
         <div className="mt-6">
           <DocumentList documents={documents ?? []} />

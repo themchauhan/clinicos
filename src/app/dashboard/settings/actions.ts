@@ -373,6 +373,54 @@ export async function setRequirement(
   return {};
 }
 
+/** Same tri-state as setRequirement, for fillable forms: null removes
+ * the rule, true/false makes the form required/optional for the visit
+ * type. New visits snapshot it; existing visits are unaffected. */
+export async function setFormRequirement(
+  visitTypeId: string,
+  formTemplateId: string,
+  required: boolean | null,
+): Promise<{ error?: string }> {
+  requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
+
+  const supabase = await createClient();
+
+  if (required === null) {
+    const { error } = await supabase
+      .from("visit_type_form_requirements")
+      .delete()
+      .eq("visit_type_id", visitTypeId)
+      .eq("form_template_id", formTemplateId);
+    if (error) return { error: "Could not update that requirement." };
+  } else {
+    const { data: existing } = await supabase
+      .from("visit_type_form_requirements")
+      .select("id")
+      .eq("visit_type_id", visitTypeId)
+      .eq("form_template_id", formTemplateId)
+      .maybeSingle();
+
+    const { error } = existing
+      ? await supabase
+          .from("visit_type_form_requirements")
+          .update({ required })
+          .eq("id", existing.id)
+      : await supabase
+          .from("visit_type_form_requirements")
+          .insert({ visit_type_id: visitTypeId, form_template_id: formTemplateId, required });
+    if (error) return { error: "Could not update that requirement." };
+  }
+
+  await logAudit({
+    action: "visit_type_form_requirement.updated",
+    targetType: "visit_type",
+    targetId: visitTypeId,
+    metadata: { form_template_id: formTemplateId, required },
+  });
+  revalidatePath("/dashboard/settings/forms");
+  return {};
+}
+
 export interface HospitalFormProfileState {
   error?: string;
 }

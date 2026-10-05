@@ -412,6 +412,63 @@ export interface Database {
           },
         ];
       };
+      visit_type_form_requirements: {
+        Row: {
+          id: string;
+          hospital_id: string;
+          visit_type_id: string;
+          form_template_id: string;
+          required: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["visit_type_form_requirements"]["Row"]> & {
+          visit_type_id: string;
+          form_template_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["visit_type_form_requirements"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "visit_type_form_requirements_visit_type_id_hospital_id_fkey";
+            columns: ["visit_type_id", "hospital_id"];
+            referencedRelation: "visit_types";
+            referencedColumns: ["id", "hospital_id"];
+            isOneToOne: false;
+          },
+          {
+            foreignKeyName: "visit_type_form_requirements_form_template_id_hospital_id_fkey";
+            columns: ["form_template_id", "hospital_id"];
+            referencedRelation: "form_templates";
+            referencedColumns: ["id", "hospital_id"];
+            isOneToOne: false;
+          },
+        ];
+      };
+      visit_form_requirements: {
+        Row: {
+          id: string;
+          hospital_id: string;
+          visit_id: string;
+          form_template_id: string;
+          form_template_name: string;
+          required: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["visit_form_requirements"]["Row"]> & {
+          visit_id: string;
+          form_template_id: string;
+          form_template_name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["visit_form_requirements"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "visit_form_requirements_visit_id_hospital_id_fkey";
+            columns: ["visit_id", "hospital_id"];
+            referencedRelation: "visits";
+            referencedColumns: ["id", "hospital_id"];
+            isOneToOne: false;
+          },
+        ];
+      };
       documents: {
         Row: {
           id: string;
