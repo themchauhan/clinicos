@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BackLink } from "@/components/back-link";
-import { Pagination } from "@/components/pagination";
+import { SimplePager } from "@/components/simple-pager";
 
 export const metadata: Metadata = { title: "Pending documents — ClinicOS" };
 
@@ -25,14 +25,15 @@ export default async function PendingDocumentsPage({
 
   // Missing documents and unsigned required forms in one list, newest
   // visit first, filtered and paginated in the database.
-  const { data: pendingPage, count: pendingCount } = await supabase
+  const { data: pendingPage } = await supabase
     .from("pending_visit_requirements")
-    .select("*", { count: "exact" })
+    .select("*")
     .order("visit_date", { ascending: false })
     .order("token_number", { ascending: false })
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-  const rows = pendingPage ?? [];
-  const totalPending = pendingCount ?? 0;
+    .range((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE);
+  // One extra row tells us whether a next page exists (no count(*)).
+  const hasNext = (pendingPage ?? []).length > PAGE_SIZE;
+  const rows = (pendingPage ?? []).slice(0, PAGE_SIZE);
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-16 sm:px-6">
@@ -43,7 +44,7 @@ export default async function PendingDocumentsPage({
         document has been captured.
       </p>
 
-      {totalPending > 0 ? (
+      {rows.length > 0 ? (
         <>
           <div className="mt-8 flex flex-col gap-3 sm:hidden">
             {rows.map((r) => {
@@ -112,10 +113,11 @@ export default async function PendingDocumentsPage({
             </tbody>
           </table>
 
-          <Pagination
+          <SimplePager
             page={page}
             pageSize={PAGE_SIZE}
-            totalCount={totalPending}
+            shown={rows.length}
+            hasNext={hasNext}
             basePath="/dashboard/documents"
           />
         </>

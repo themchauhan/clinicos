@@ -30,6 +30,9 @@ export async function updateSession(request: NextRequest) {
   // dashboard/layout.tsx) can send the user back to the page they
   // actually asked for, not a hardcoded fallback.
   request.headers.set("x-pathname", request.nextUrl.pathname);
+  // Never trust a client-sent value: this header is only ever set below,
+  // from the user the Auth server just validated for THIS request.
+  request.headers.delete("x-user-id");
 
   let response = NextResponse.next({ request });
 
@@ -55,6 +58,18 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user) {
+    // Validated once here (the Auth server round trip), then handed to
+    // getSessionProfile() so it doesn't repeat that same round trip on
+    // every request -- and on every link prefetch, of which a page has
+    // many. Recreate the response so the forwarded request carries the
+    // header, keeping any session cookies the refresh above just set.
+    request.headers.set("x-user-id", user.id);
+    const refreshed = response.cookies.getAll();
+    response = NextResponse.next({ request });
+    refreshed.forEach((cookie) => response.cookies.set(cookie));
+  }
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const redirectUrl = new URL("/login", request.url);

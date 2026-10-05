@@ -125,7 +125,15 @@ export interface Database {
           role: StaffRole;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "profiles_hospital_id_fkey";
+            columns: ["hospital_id"];
+            referencedRelation: "hospitals";
+            referencedColumns: ["id"];
+            isOneToOne: false;
+          },
+        ];
       };
       platform_admins: {
         Row: {
@@ -763,6 +771,10 @@ export interface Database {
       patients_for_day: {
         Args: { p_date: string; p_day_start: string };
         Returns: Database["public"]["Tables"]["patients"]["Row"][];
+      };
+      patient_total: {
+        Args: Record<string, never>;
+        Returns: number;
       };
       next_visit_token: {
         Args: { p_date: string };

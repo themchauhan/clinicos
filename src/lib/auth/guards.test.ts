@@ -17,6 +17,7 @@ function makeProfile(overrides: Partial<SessionProfile> = {}): SessionProfile {
       trialEndsAt: new Date().toISOString(),
       subscriptionEndsAt: null,
     },
+    enabledModules: ["GENERAL_OPD"],
     ...overrides,
   };
 }

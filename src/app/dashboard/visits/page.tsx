@@ -5,6 +5,7 @@ import { derivePaymentStatus, sumPayments } from "@/lib/visits/payment-status";
 import { todayInAppTimezone } from "@/lib/visits/today";
 import { BackLink } from "@/components/back-link";
 import { Pagination } from "@/components/pagination";
+import { SimplePager } from "@/components/simple-pager";
 import { LinkPendingSpinner } from "@/components/link-pending-spinner";
 import { VisitRow } from "@/components/visits/visit-row";
 
@@ -52,22 +53,20 @@ export default async function VisitsPage({
   const searchPast = params.past === "1" || neitherTicked;
 
   const supabase = await createClient();
-  const [{ count: todayCount }, { count: pastCount }] = await Promise.all([
-    supabase
-      .from("visits")
-      .select("id", { count: "exact", head: true })
-      .eq("visit_date", todayDate),
-    supabase
-      .from("visits")
-      .select("id", { count: "exact", head: true })
-      .lt("visit_date", todayDate),
-  ]);
+  // Only today's tab gets a count: it is index-bounded and cheap. An
+  // exact count(*) over all past visits is a full scan on every page view
+  // (0.7s at 200k visits), so Past / All show none and page without a total.
+  const { count: todayCount } = await supabase
+    .from("visits")
+    .select("id", { count: "exact", head: true })
+    .eq("visit_date", todayDate);
 
   // Search results aren't paginated -- search_visits already caps
   // itself at 50 best matches server-side (see its own migration), so
   // a search narrow enough to matter never needs a second page.
   let visits: VisitRow[] | null;
   let totalCount: number | null = null;
+  let hasNext = false;
   if (query) {
     // search_visits returns setof visits (bare columns only, no
     // embeds) -- fetch the matching ids in their already-ranked
@@ -87,19 +86,29 @@ export default async function VisitsPage({
   } else {
     // Today reads as the day's queue (token 1 first); Past reads as
     // history (newest day first).
-    const base = supabase.from("visits").select(VISIT_COLUMNS, { count: "exact" });
-    const result =
-      when === "today"
-        ? await base
-            .eq("visit_date", todayDate)
-            .order("token_number", { ascending: true })
-            .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
-        : await (when === "past" ? base.lt("visit_date", todayDate) : base)
-            .order("visit_date", { ascending: false })
-            .order("token_number", { ascending: false })
-            .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-    visits = result.data;
-    totalCount = result.count;
+    const from = (page - 1) * PAGE_SIZE;
+    if (when === "today") {
+      // Today's queue: token 1 first, exact count, numbered pages.
+      const result = await supabase
+        .from("visits")
+        .select(VISIT_COLUMNS, { count: "exact" })
+        .eq("visit_date", todayDate)
+        .order("token_number", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      visits = result.data;
+      totalCount = result.count;
+    } else {
+      // History (newest day first): one extra row tells us whether a
+      // next page exists, no count(*) needed.
+      const base = supabase.from("visits").select(VISIT_COLUMNS);
+      const result = await (when === "past" ? base.lt("visit_date", todayDate) : base)
+        .order("visit_date", { ascending: false })
+        .order("token_number", { ascending: false })
+        .range(from, from + PAGE_SIZE);
+      const rows = result.data ?? [];
+      visits = rows.slice(0, PAGE_SIZE);
+      hasNext = rows.length > PAGE_SIZE;
+    }
   }
   const hideDate = !query && when === "today";
 
@@ -120,8 +129,8 @@ export default async function VisitsPage({
         {(
           [
             { key: "today", label: "Today", count: todayCount ?? 0 },
-            { key: "past", label: "Past", count: pastCount ?? 0 },
-            { key: "all", label: "All", count: (todayCount ?? 0) + (pastCount ?? 0) },
+            { key: "past", label: "Past", count: null },
+            { key: "all", label: "All", count: null },
           ] as const
         ).map((tab) => {
           const active = !query && when === tab.key;
@@ -137,7 +146,9 @@ export default async function VisitsPage({
               }
             >
               {tab.label}{" "}
-              <span className={active ? "text-teal-100" : "text-zinc-400"}>{tab.count}</span>
+              {tab.count !== null ? (
+                <span className={active ? "text-teal-100" : "text-zinc-400"}>{tab.count}</span>
+              ) : null}
             </Link>
           );
         })}
@@ -248,6 +259,16 @@ export default async function VisitsPage({
                 page={page}
                 pageSize={PAGE_SIZE}
                 totalCount={totalCount}
+                basePath="/dashboard/visits"
+                extraParams={{ when }}
+              />
+            ) : null}
+            {!query && totalCount === null ? (
+              <SimplePager
+                page={page}
+                pageSize={PAGE_SIZE}
+                shown={visits.length}
+                hasNext={hasNext}
                 basePath="/dashboard/visits"
                 extraParams={{ when }}
               />

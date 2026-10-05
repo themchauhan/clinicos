@@ -31,12 +31,7 @@ export default async function UsgDashboardPage() {
   requireRole(profile, ["HOSPITAL_ADMIN", "RECEPTIONIST"]);
 
   const supabase = await createClient();
-  const { data: usgModule } = await supabase
-    .from("hospital_modules")
-    .select("module")
-    .eq("module", "USG")
-    .maybeSingle();
-  if (!usgModule) {
+  if (!profile.enabledModules.includes("USG")) {
     redirect("/dashboard");
   }
 

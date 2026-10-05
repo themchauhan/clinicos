@@ -1,8 +1,9 @@
 import "server-only";
 
 import { cache } from "react";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import type { HospitalStatus, StaffRole } from "@/types/database";
+import type { HospitalStatus, ModuleType, StaffRole } from "@/types/database";
 
 export interface SessionProfile {
   userId: string;
@@ -19,6 +20,8 @@ export interface SessionProfile {
     trialEndsAt: string;
     subscriptionEndsAt: string | null;
   } | null;
+  /** Modules enabled for the hospital (empty for a platform admin). */
+  enabledModules: ModuleType[];
 }
 
 /**
@@ -32,23 +35,33 @@ export interface SessionProfile {
 export const getSessionProfile = cache(async (): Promise<SessionProfile | null> => {
   const supabase = await createClient();
 
-  // getUser() revalidates against the Auth server rather than trusting
-  // the local cookie's JWT claims — required for a server-side
-  // authorization source of truth (getSession() alone is not enough
-  // here).
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return null;
+  // The Auth server validates the session once per request, in
+  // middleware.ts, which passes the verified user id on in a header it
+  // alone sets (it deletes any client-sent copy first). Reuse it so
+  // each request -- and each of a page's link prefetches -- isn't
+  // charged a second Auth round trip. With no header (a path that
+  // skipped middleware) fall back to validating here: getUser()
+  // revalidates against the Auth server rather than trusting the local
+  // cookie's JWT claims, which getSession() alone would.
+  let userId = (await headers()).get("x-user-id");
+  if (!userId) {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return null;
+    }
+    userId = user.id;
   }
 
+  // Profile, hospital and enabled modules in one round trip.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, hospital_id, name, email, role, status")
-    .eq("id", user.id)
+    .select(
+      "id, hospital_id, name, email, role, status, hospitals(id, name, status, trial_ends_at, subscription_ends_at, hospital_modules(module))",
+    )
+    .eq("id", userId)
     .single();
 
   if (profileError || !profile || profile.status !== "ACTIVE") {
@@ -60,7 +73,7 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile | null> 
     const { data: platformAdmin } = await supabase
       .from("platform_admins")
       .select("id")
-      .eq("profile_id", user.id)
+      .eq("profile_id", userId)
       .maybeSingle();
 
     // A SUPER_ADMIN profile with no platform_admins row is a data
@@ -72,32 +85,25 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile | null> 
     isPlatformAdmin = true;
   }
 
-  let hospital: SessionProfile["hospital"] = null;
-  if (profile.hospital_id) {
-    const { data: hospitalRow } = await supabase
-      .from("hospitals")
-      .select("id, name, status, trial_ends_at, subscription_ends_at")
-      .eq("id", profile.hospital_id)
-      .single();
-
-    if (hospitalRow) {
-      hospital = {
+  const hospitalRow = profile.hospitals;
+  const hospital: SessionProfile["hospital"] = hospitalRow
+    ? {
         id: hospitalRow.id,
         name: hospitalRow.name,
         status: hospitalRow.status,
         trialEndsAt: hospitalRow.trial_ends_at,
         subscriptionEndsAt: hospitalRow.subscription_ends_at,
-      };
-    }
-  }
+      }
+    : null;
 
   return {
-    userId: user.id,
+    userId,
     email: profile.email,
     name: profile.name,
     role: profile.role,
     hospitalId: profile.hospital_id,
     isPlatformAdmin,
     hospital,
+    enabledModules: (hospitalRow?.hospital_modules ?? []).map((m) => m.module),
   };
 });

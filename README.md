@@ -393,12 +393,19 @@ e2e/                 Playwright e2e tests
 - Fillable forms can be marked **Required** per visit type (Settings →
   Forms). New visits snapshot the rule (`visit_form_requirements`);
   a form is satisfied only by a signed copy on the same visit.
-- "Pending" is computed in the database by the
-  `pending_visit_requirements` view (RLS-scoped via `security_invoker`)
-  and used by the dashboard count, the USG board and the Pending
-  documents page, so it stays correct and cheap however many documents
-  exist. A visit-scope document from an earlier visit does not satisfy
+- "Pending" items live in a small table, `visit_pending_items`, kept in
+  sync by triggers whenever a document, a visit's status or a visit's
+  requirements change; the single function that decides what is pending
+  is `refresh_pending_requirements()`. The dashboard count, the USG board
+  and the Pending documents page read it through the RLS-scoped
+  `pending_visit_requirements` view, so they are indexed lookups however
+  many documents exist (an earlier computed-on-read view took ~5s at 200k
+  visits). A visit-scope document from an earlier visit does not satisfy
   a later one; patient-scope ones (ID Proof) do.
+- Large lists (All patients, Past/All visits, Pending documents) page
+  with Previous/Next and no total: an exact `count(*)` is a full scan on
+  every page view. The "All patients" badge and the dashboard total come
+  from `patient_total()`, an O(1) read of the code counter.
 
 ## Deployment notes
 
@@ -408,7 +415,10 @@ e2e/                 Playwright e2e tests
   refuses to guess (it falls back to Vercel's production URL if
   present, otherwise errors). Also add that URL under Supabase →
   Authentication → URL Configuration (Site URL and Redirect URLs).
-- `next.config.ts` sends baseline security headers (frame denial,
+- `vercel.json` pins functions to `bom1` (Mumbai). Keep the Supabase project
+  in the same region (ap-south-1): every page makes several round trips
+  to it, so the distance between the two is the biggest latency lever.
+- `next.config.ts` sends baseline security headers (frame protection,
   nosniff, referrer policy, HSTS, permissions policy). There is no CSP
   yet; adding one needs testing with the PDF viewer.
 

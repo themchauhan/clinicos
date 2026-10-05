@@ -5,6 +5,7 @@ import { PatientRow, PatientCard, type PatientRowData } from "@/components/patie
 import { todayInAppTimezone } from "@/lib/visits/today";
 import { BackLink } from "@/components/back-link";
 import { Pagination } from "@/components/pagination";
+import { SimplePager } from "@/components/simple-pager";
 
 export const metadata: Metadata = { title: "Patients — ClinicOS" };
 
@@ -33,25 +34,42 @@ export default async function PatientsPage({
   // Search results aren't paginated -- search_patients already caps
   // itself at 50 best matches server-side (see its own migration), so
   // a search narrow enough to matter never needs a second page.
-  const listQuery = async (): Promise<{ data: PatientRowData[] | null; count: number | null }> => {
+  // Today's list is small and bounded, so it gets an exact count and
+  // numbered pages. "All patients" is the whole register: an exact
+  // count(*) there is a full scan on every view, so it fetches one extra
+  // row instead and only learns whether a next page exists.
+  const listQuery = async (): Promise<{
+    data: PatientRowData[] | null;
+    count: number | null;
+    hasNext: boolean;
+  }> => {
     if (query) {
       const { data } = await supabase.rpc("search_patients", { p_query: query });
-      return { data, count: null };
+      return { data, count: null, hasNext: false };
     }
-    const result = await (
-      when === "today"
-        ? supabase.rpc("patients_for_day", dayArgs, { count: "exact" })
-        : supabase.from("patients").select("*", { count: "exact" }).is("deleted_at", null)
-    )
+    const from = (page - 1) * PAGE_SIZE;
+    if (when === "today") {
+      const result = await supabase
+        .rpc("patients_for_day", dayArgs, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      return { data: result.data, count: result.count, hasNext: false };
+    }
+    const result = await supabase
+      .from("patients")
+      .select("*")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-    return { data: result.data, count: result.count };
+      .range(from, from + PAGE_SIZE);
+    const rows = result.data ?? [];
+    return { data: rows.slice(0, PAGE_SIZE), count: null, hasNext: rows.length > PAGE_SIZE };
   };
 
   // Independent queries, so run them together rather than one after
   // another (each is a database round trip).
-  const [{ count: allCount }, { count: todayCount }, list] = await Promise.all([
-    supabase.from("patients").select("id", { count: "exact", head: true }).is("deleted_at", null),
+  const [{ data: allCount }, { count: todayCount }, list] = await Promise.all([
+    // O(1): read from the per-hospital code counter, not count(*).
+    supabase.rpc("patient_total"),
     supabase.rpc("patients_for_day", dayArgs, { count: "exact", head: true }),
     listQuery(),
   ]);
@@ -77,7 +95,7 @@ export default async function PatientsPage({
         {(
           [
             { key: "today", label: "Today", count: todayCount ?? 0 },
-            { key: "all", label: "All patients", count: allCount ?? 0 },
+            { key: "all", label: "All patients", count: Number(allCount ?? 0) },
           ] as const
         ).map((tab) => {
           const active = !query && when === tab.key;
@@ -146,6 +164,16 @@ export default async function PatientsPage({
                 page={page}
                 pageSize={PAGE_SIZE}
                 totalCount={totalCount}
+                basePath="/dashboard/patients"
+                extraParams={{ when }}
+              />
+            ) : null}
+            {!query && totalCount === null ? (
+              <SimplePager
+                page={page}
+                pageSize={PAGE_SIZE}
+                shown={patients.length}
+                hasNext={list.hasNext}
                 basePath="/dashboard/patients"
                 extraParams={{ when }}
               />

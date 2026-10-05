@@ -16,28 +16,24 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const today = todayInAppTimezone();
 
-  const [
-    { count: patientCount },
-    { count: todayVisitCount },
-    { data: enabledModules },
-    { count: pendingVisitCount },
-  ] = await Promise.all([
-    supabase.from("patients").select("id", { count: "exact", head: true }).is("deleted_at", null),
-    supabase.from("visits").select("id", { count: "exact", head: true }).eq("visit_date", today),
-    supabase.from("hospital_modules").select("module"),
-    // Computed in the database (see the pending_visit_requirements
-    // migration) rather than by diffing every document in the app.
-    supabase.from("visits_with_pending_requirements").select("visit_id", {
-      count: "exact",
-      head: true,
-    }),
-  ]);
+  const [{ count: patientCount }, { count: todayVisitCount }, { count: pendingVisitCount }] =
+    await Promise.all([
+      // O(1): the per-hospital code counter, not count(*) over every patient.
+      supabase.rpc("patient_total"),
+      supabase.from("visits").select("id", { count: "exact", head: true }).eq("visit_date", today),
+      // Computed in the database (see the pending_visit_requirements
+      // migration) rather than by diffing every document in the app.
+      supabase.from("visits_with_pending_requirements").select("visit_id", {
+        count: "exact",
+        head: true,
+      }),
+    ]);
 
-  const modules = (enabledModules ?? []).map((m) => m.module);
+  const modules = profile?.enabledModules ?? [];
   const isAdmin = profile?.role === "HOSPITAL_ADMIN";
 
   const stats = [
-    { label: "Patients", value: patientCount ?? 0, href: "/dashboard/patients" },
+    { label: "Patients", value: Number(patientCount ?? 0), href: "/dashboard/patients" },
     { label: "Today's visits", value: todayVisitCount ?? 0, href: "/dashboard/patients" },
     {
       label: "Documents pending",
