@@ -43,10 +43,13 @@ test("a platform admin creates a centre, manages its status/plan, and records a 
 
   // Shows up in the centre list too.
   await page.goto("/admin");
-  await expect(page.getByRole("link", { name: centreName })).toBeVisible();
+  // Scoped to the centres table: the File storage card above it lists
+  // every centre as a link too.
+  const centreLink = page.getByRole("table").getByRole("link", { name: centreName });
+  await expect(centreLink).toBeVisible();
 
   // Change its status directly (no payment attached).
-  await page.getByRole("link", { name: centreName }).click();
+  await centreLink.click();
   await page.getByRole("combobox").first().selectOption("SUSPENDED");
   await expect(page.getByText("Saving…")).toHaveCount(0, { timeout: 10_000 });
 
