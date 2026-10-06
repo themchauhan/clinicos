@@ -45,19 +45,18 @@ export async function BusinessOverviewSection({
 
   if (!summary || !previous) {
     return (
-      <p className="mt-10 text-sm text-slate-500">
+      <p className="mt-5 text-sm text-slate-500">
         The business overview couldn&rsquo;t be loaded right now. Refresh to try again.
       </p>
     );
   }
-  return <BusinessOverview summary={summary} previous={previous.totals} period={period} />;
+  return <BusinessOverview summary={summary} previous={previous.totals} />;
 }
 
 /** Shown while the overview loads: same footprint, so nothing jumps. */
 export function BusinessOverviewSkeleton() {
   return (
-    <section className="mt-10" aria-busy="true" aria-label="Loading business overview">
-      <div className="h-7 w-48 animate-pulse rounded bg-slate-200" />
+    <div aria-busy="true" aria-label="Loading business overview">
       <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-xl bg-slate-100" />
@@ -67,6 +66,6 @@ export function BusinessOverviewSkeleton() {
         <div className="h-56 animate-pulse rounded-xl bg-slate-100" />
         <div className="h-56 animate-pulse rounded-xl bg-slate-100" />
       </div>
-    </section>
+    </div>
   );
 }

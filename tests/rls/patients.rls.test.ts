@@ -226,4 +226,31 @@ describe("patients RLS", () => {
     expect(gone?.deleted_at).not.toBeNull();
     await expectMatches(sunrise, sunriseId);
   });
+
+  it("search puts the newest of several same-named patients first", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    // A name unique to this test run, shared by more patients than one
+    // page of results holds (50), so only the tiebreak decides who is shown.
+    const shared = `Tiebreak Sameperson ${Date.now()}`;
+    const rows = Array.from({ length: 52 }, (_, i) => ({
+      name: shared,
+      mobile: `9${String(7000000000 + i).slice(-9)}`,
+    }));
+    // Insert one by one, oldest first, so created_at strictly increases.
+    let newest: string | undefined;
+    for (const row of rows) {
+      const { data } = await sunrise.from("patients").insert(row).select().single();
+      newest = data!.id;
+    }
+
+    const { data: results } = await sunrise.rpc("search_patients", { p_query: shared });
+    expect(results).toHaveLength(50);
+    expect(results![0].id).toBe(newest);
+
+    // Retire them (soft-delete, as the app does) so reruns don't pile up data.
+    await serviceRoleClient()
+      .from("patients")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("name", shared);
+  });
 });

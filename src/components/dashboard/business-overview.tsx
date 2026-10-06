@@ -43,6 +43,50 @@ function Panel({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * Heading, date range and period tabs. Rendered by the page itself, outside
+ * the <Suspense> that streams the figures, so the tabs stay on screen while
+ * a new period loads instead of vanishing behind a placeholder.
+ */
+export function OverviewHeader({ period }: { period: Period }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h2 id="business-overview-heading" className="text-xl font-semibold text-slate-900">
+          Business overview
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          {formatRange(period.from, period.to)}
+          <span className="text-slate-400">
+            {" "}
+            · compared with {formatRange(period.prevFrom, period.prevTo)}
+          </span>
+        </p>
+      </div>
+      <nav aria-label="Period" className="flex flex-wrap gap-2">
+        {RANGE_OPTIONS.map((o) => {
+          const active = o.key === period.key;
+          return (
+            <Link
+              key={o.key}
+              href={`/dashboard?range=${o.key}`}
+              scroll={false}
+              aria-current={active ? "page" : undefined}
+              className={
+                active
+                  ? "rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white"
+                  : "rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+              }
+            >
+              {o.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+/**
  * "How is the centre doing?" -- visits, new vs returning patients, and
  * (for the Admin only) collection and dues, for a chosen period, with the
  * change from the comparable previous period. The numbers all come from
@@ -51,11 +95,9 @@ function Panel({ children }: { children: React.ReactNode }) {
 export function BusinessOverview({
   summary,
   previous,
-  period,
 }: {
   summary: DashboardSummary;
   previous: SummaryTotals;
-  period: Period;
 }) {
   const t = summary.totals;
   const admin = summary.is_admin;
@@ -67,42 +109,7 @@ export function BusinessOverview({
   }));
 
   return (
-    <section className="mt-10" aria-labelledby="business-overview-heading">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 id="business-overview-heading" className="text-xl font-semibold text-slate-900">
-            Business overview
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {formatRange(period.from, period.to)}
-            <span className="text-slate-400">
-              {" "}
-              · compared with {formatRange(period.prevFrom, period.prevTo)}
-            </span>
-          </p>
-        </div>
-        <nav aria-label="Period" className="flex flex-wrap gap-2">
-          {RANGE_OPTIONS.map((o) => {
-            const active = o.key === period.key;
-            return (
-              <Link
-                key={o.key}
-                href={`/dashboard?range=${o.key}`}
-                scroll={false}
-                aria-current={active ? "page" : undefined}
-                className={
-                  active
-                    ? "rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white"
-                    : "rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-100"
-                }
-              >
-                {o.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
+    <div>
       <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi
           label="Visits"
@@ -216,6 +223,6 @@ export function BusinessOverview({
           </Panel>
         ) : null}
       </div>
-    </section>
+    </div>
   );
 }

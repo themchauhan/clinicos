@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ModuleType } from "@/types/database";
 import { todayInAppTimezone } from "@/lib/visits/today";
 import { parseRange, resolvePeriod } from "@/lib/dashboard/periods";
+import { OverviewHeader } from "@/components/dashboard/business-overview";
 import {
   BusinessOverviewSection,
   BusinessOverviewSkeleton,
@@ -122,9 +123,12 @@ export default async function DashboardPage({
           once: staff never run these queries, and the Admin's page isn't
           held up by them. */}
       {isAdmin && profile?.hospitalId ? (
-        <Suspense key={period.key} fallback={<BusinessOverviewSkeleton />}>
-          <BusinessOverviewSection hospitalId={profile.hospitalId} period={period} />
-        </Suspense>
+        <section className="mt-10" aria-labelledby="business-overview-heading">
+          <OverviewHeader period={period} />
+          <Suspense key={period.key} fallback={<BusinessOverviewSkeleton />}>
+            <BusinessOverviewSection hospitalId={profile.hospitalId} period={period} />
+          </Suspense>
+        </section>
       ) : null}
     </main>
   );

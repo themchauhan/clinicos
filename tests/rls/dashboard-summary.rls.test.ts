@@ -108,23 +108,41 @@ describe("dashboard_summary", () => {
     const admin = await signInAs(SEED_ACCOUNTS.sunrise.admin);
     const sunriseId = await hospitalIdByName("Sunrise General Hospital");
     const today = todayIst();
-    const s = await summary(admin, today, today);
-
     const start = new Date(`${today}T00:00:00+05:30`).toISOString();
     const end = new Date(new Date(`${today}T00:00:00+05:30`).getTime() + 86_400_000).toISOString();
-    const { data: payments } = await serviceRoleClient()
-      .from("visit_payments")
-      .select("amount, mode")
-      .eq("hospital_id", sunriseId)
-      .gte("received_at", start)
-      .lt("received_at", end);
-    const expected = (payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+
+    const trueTotal = async () => {
+      const { data: payments } = await serviceRoleClient()
+        .from("visit_payments")
+        .select("amount")
+        .eq("hospital_id", sunriseId)
+        .gte("received_at", start)
+        .lt("received_at", end);
+      return (payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+    };
+
+    // Other test files record payments concurrently, so the figure can move
+    // between our reads. Wait for a quiet moment where the summary, the true
+    // total and the summary again all agree.
+    let s = await summary(admin, today, today);
+    let expected = await trueTotal();
+    for (let i = 0; i < 40; i++) {
+      const again = await summary(admin, today, today);
+      if (Number(s.totals.collected) === expected && Number(again.totals.collected) === expected) {
+        s = again;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      s = await summary(admin, today, today);
+      expected = await trueTotal();
+    }
 
     expect(Number(s.totals.collected)).toBe(expected);
     const byModeTotal = (s.by_mode ?? []).reduce((sum, m) => sum + Number(m.amount), 0);
     const byStaffTotal = (s.by_staff ?? []).reduce((sum, m) => sum + Number(m.amount), 0);
-    expect(byModeTotal).toBe(expected);
-    expect(byStaffTotal).toBe(expected);
+    // The splits come from the same call, so they always add up to its total.
+    expect(byModeTotal).toBe(Number(s.totals.collected));
+    expect(byStaffTotal).toBe(Number(s.totals.collected));
   });
 
   it("a receptionist gets the visit figures but none of the money", async () => {
@@ -132,8 +150,15 @@ describe("dashboard_summary", () => {
     const reception = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
     const today = todayIst();
 
-    const forAdmin = await summary(admin, today, today);
-    const forReception = await summary(reception, today, today);
+    // Other test files add visits concurrently, so two separate calls can
+    // straddle an insert. Retry until both see the same figure.
+    let forAdmin = await summary(admin, today, today);
+    let forReception = await summary(reception, today, today);
+    for (let i = 0; i < 40 && forAdmin.totals.visits !== forReception.totals.visits; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      forAdmin = await summary(admin, today, today);
+      forReception = await summary(reception, today, today);
+    }
 
     expect(forReception.is_admin).toBe(false);
     expect(forReception.totals.visits).toBe(forAdmin.totals.visits);
