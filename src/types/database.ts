@@ -13,6 +13,7 @@
 // FKs from the Phase 2/3 migrations, not just a bare id column.
 
 import type { GuardianRelation } from "@/lib/patients/guardian";
+import type { DashboardSummary } from "@/lib/dashboard/summary";
 
 export type HospitalStatus = "TRIAL" | "ACTIVE" | "SUSPENDED" | "EXPIRED";
 export type ModuleType = "GENERAL_OPD" | "USG";
@@ -771,6 +772,10 @@ export interface Database {
       patients_for_day: {
         Args: { p_date: string; p_day_start: string };
         Returns: Database["public"]["Tables"]["patients"]["Row"][];
+      };
+      dashboard_summary: {
+        Args: { p_from: string; p_to: string; p_bucket?: string; p_totals_only?: boolean };
+        Returns: DashboardSummary;
       };
       storage_usage_by_hospital: {
         Args: Record<string, never>;

@@ -21,6 +21,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // RLS tests sign in and round-trip to a real database; on a cold one
+    // (a fresh CI run, or right after heavy DB work) the 5s default is tight.
+    testTimeout: 20_000,
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}"],
     exclude: ["e2e/**", "node_modules/**"],

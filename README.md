@@ -430,6 +430,35 @@ maintenance function needs an explicit
 `20261005000034_lock_down_function_execute.sql`, and the RLS test that
 asserts the maintenance function cannot be called.
 
+## Dashboard business overview
+
+The main dashboard (`/dashboard`) opens with today's operational cards
+(total patients on file, today's visits, documents pending). For the
+centre's **Admin only**, a **Business overview** follows for a chosen
+period -- receptionists and other staff never see it and never run its
+queries, so their dashboard stays exactly as fast as before. For the
+Admin it streams in after the cards (they paint immediately), and each
+result is cached for a minute per centre and period. Periods: This month, Last month, This /
+Last financial year (Indian, 1 April to 31 March) or This calendar year.
+
+- Headline figures: visits, new vs returning patients, and (Admin) money
+  collected, billed and outstanding, each with the change from the
+  comparable previous period. Below them: collection by payment mode,
+  doctors, who refers the most patients, busiest weekdays, and collection
+  by staff member.
+- "Collected" is money actually received in the period (cash basis;
+  reversals are negative payments and net out). "Outstanding" is
+  billed-minus-paid on the period's own visits. Cancelled visits are
+  excluded from visits, billed and dues.
+- Everything comes from one database function, `dashboard_summary()`
+  (`20261006000036_dashboard_summary.sql`), in a single round trip. It is
+  SECURITY INVOKER, so RLS limits it to the caller's own centre, and it
+  returns every money field as `null` unless the caller is a
+  HOSPITAL_ADMIN -- enforced in SQL as well as in the page, so even a
+  direct API call by a receptionist gets no money.
+- The bars are plain HTML and CSS (no charting library): nothing extra is
+  downloaded and they render on the server.
+
 ## Required forms & pending requirements
 
 - Fillable forms can be marked **Required** per visit type (Settings →
@@ -447,7 +476,7 @@ asserts the maintenance function cannot be called.
 - Large lists (All patients, Past/All visits, Pending documents) page
   with Previous/Next and no total: an exact `count(*)` is a full scan on
   every page view. The "All patients" badge and the dashboard total come
-  from `patient_total()`, an O(1) read of the code counter.
+  from `patient_total()`, an exact count of the patients on file.
 
 ## Deployment notes
 

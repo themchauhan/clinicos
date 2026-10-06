@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SEED_ACCOUNTS, hospitalIdByName, signInAs } from "./helpers";
+import { SEED_ACCOUNTS, hospitalIdByName, serviceRoleClient, signInAs } from "./helpers";
 
 describe("patients RLS", () => {
   it("happy path: create a patient, find them by name/mobile/code, open the same profile", async () => {
@@ -72,12 +72,18 @@ describe("patients RLS", () => {
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
     const args = { p_date: today, p_day_start: new Date(`${today}T00:00:00+05:30`).toISOString() };
 
-    const { data: sunriseToday } = await sunrise.rpc("patients_for_day", args);
-    expect(sunriseToday?.some((p) => p.id === created!.id)).toBe(true);
+    // Filter by id: today's list can hold more rows than one API response
+    // returns, so scanning it for the new patient is not reliable.
+    const { data: sunriseToday } = await sunrise
+      .rpc("patients_for_day", args)
+      .eq("id", created!.id);
+    expect(sunriseToday).toHaveLength(1);
 
     const clarity = await signInAs(SEED_ACCOUNTS.clarity.receptionist);
-    const { data: clarityToday } = await clarity.rpc("patients_for_day", args);
-    expect(clarityToday?.some((p) => p.id === created!.id)).toBe(false);
+    const { data: clarityToday } = await clarity
+      .rpc("patients_for_day", args)
+      .eq("id", created!.id);
+    expect(clarityToday).toHaveLength(0);
   });
 
   it("fuzzy name search tolerates a spelling variant", async () => {
@@ -161,5 +167,63 @@ describe("patients RLS", () => {
       .eq("id", created!.id)
       .single();
     expect(stillThere?.id).toBe(created!.id);
+  });
+
+  it("patient_total counts the caller's own non-deleted patients, and no one else's", async () => {
+    const sunrise = await signInAs(SEED_ACCOUNTS.sunrise.receptionist);
+    const clarity = await signInAs(SEED_ACCOUNTS.clarity.receptionist);
+    const sunriseId = await hospitalIdByName("Sunrise General Hospital");
+    const clarityId = await hospitalIdByName("Clarity Diagnostics");
+    const sr = serviceRoleClient();
+
+    const trueCount = async (hospitalId: string) => {
+      const { count } = await sr
+        .from("patients")
+        .select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId)
+        .is("deleted_at", null);
+      return count ?? 0;
+    };
+    const total = async (client: typeof sunrise) =>
+      Number((await client.rpc("patient_total")).data);
+
+    // Other test files create patients concurrently, so two separate reads
+    // can straddle an insert. Wait for a quiet moment where the function,
+    // the true count and the function again all agree.
+    const expectMatches = async (client: typeof sunrise, hospitalId: string) => {
+      for (let i = 0; i < 40; i++) {
+        const a = await total(client);
+        const truth = await trueCount(hospitalId);
+        const b = await total(client);
+        if (a === truth && truth === b) return truth;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error("patient_total never matched the true count");
+    };
+
+    const before = await expectMatches(sunrise, sunriseId);
+    await expectMatches(clarity, clarityId);
+
+    // A new patient is counted...
+    const { data: created } = await sunrise
+      .from("patients")
+      .insert({ name: "Total Count Testperson" })
+      .select()
+      .single();
+    expect(await expectMatches(sunrise, sunriseId)).toBeGreaterThan(before);
+
+    // ...and one that is removed no longer is (the old counter-based
+    // version kept counting it). The service-role count excludes it too.
+    await sr
+      .from("patients")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", created!.id);
+    const { data: gone } = await sr
+      .from("patients")
+      .select("deleted_at")
+      .eq("id", created!.id)
+      .single();
+    expect(gone?.deleted_at).not.toBeNull();
+    await expectMatches(sunrise, sunriseId);
   });
 });

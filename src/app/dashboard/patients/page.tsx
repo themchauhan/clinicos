@@ -68,7 +68,7 @@ export default async function PatientsPage({
   // Independent queries, so run them together rather than one after
   // another (each is a database round trip).
   const [{ data: allCount }, { count: todayCount }, list] = await Promise.all([
-    // O(1): read from the per-hospital code counter, not count(*).
+    // Exact count of patients on file (see the patient_total migration).
     supabase.rpc("patient_total"),
     supabase.rpc("patients_for_day", dayArgs, { count: "exact", head: true }),
     listQuery(),

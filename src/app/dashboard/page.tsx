@@ -1,24 +1,37 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { ModuleType } from "@/types/database";
 import { todayInAppTimezone } from "@/lib/visits/today";
+import { parseRange, resolvePeriod } from "@/lib/dashboard/periods";
+import {
+  BusinessOverviewSection,
+  BusinessOverviewSkeleton,
+} from "@/components/dashboard/business-overview-section";
 
 export const metadata: Metadata = { title: "Dashboard — ClinicOS" };
 
 const MODULE_LABELS: Record<ModuleType, string> = { GENERAL_OPD: "General OPD", USG: "USG" };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range } = await searchParams;
   // Role/MFA gating already happened in dashboard/layout.tsx; this
   // call is a cheap cache() hit, not a re-fetch.
   const profile = await getSessionProfile();
   const supabase = await createClient();
   const today = todayInAppTimezone();
+  const period = resolvePeriod(parseRange(range), today);
 
-  const [{ count: patientCount }, { count: todayVisitCount }, { count: pendingVisitCount }] =
+  const [{ data: patientCount }, { count: todayVisitCount }, { count: pendingVisitCount }] =
     await Promise.all([
-      // O(1): the per-hospital code counter, not count(*) over every patient.
+      // Total patients ever registered and still on file -- not just today's.
+      // (An rpc returns its value in `data`, not `count`.)
       supabase.rpc("patient_total"),
       supabase.from("visits").select("id", { count: "exact", head: true }).eq("visit_date", today),
       // Computed in the database (see the pending_visit_requirements
@@ -34,7 +47,7 @@ export default async function DashboardPage() {
 
   const stats = [
     { label: "Patients", value: Number(patientCount ?? 0), href: "/dashboard/patients" },
-    { label: "Today's visits", value: todayVisitCount ?? 0, href: "/dashboard/patients" },
+    { label: "Today's visits", value: todayVisitCount ?? 0, href: "/dashboard/visits" },
     {
       label: "Documents pending",
       value: pendingVisitCount ?? 0,
@@ -104,6 +117,15 @@ export default async function DashboardPage() {
           ) : null}
         </div>
       </div>
+
+      {/* Admin only, and streamed in after the cards above so they paint at
+          once: staff never run these queries, and the Admin's page isn't
+          held up by them. */}
+      {isAdmin && profile?.hospitalId ? (
+        <Suspense key={period.key} fallback={<BusinessOverviewSkeleton />}>
+          <BusinessOverviewSection hospitalId={profile.hospitalId} period={period} />
+        </Suspense>
+      ) : null}
     </main>
   );
 }
