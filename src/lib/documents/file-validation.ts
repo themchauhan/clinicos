@@ -7,6 +7,10 @@ export type ApprovedFileType = "image/jpeg" | "image/png" | "application/pdf";
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
+/** A blank form template. Every filled, signed copy of a form repeats
+ * the whole template, so its size multiplies by the number of patients. */
+export const MAX_FORM_TEMPLATE_BYTES = 2 * 1024 * 1024; // 2 MB
+
 const SIGNATURES: { bytes: number[]; mime: ApprovedFileType; ext: string }[] = [
   { bytes: [0xff, 0xd8, 0xff], mime: "image/jpeg", ext: "jpg" },
   { bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], mime: "image/png", ext: "png" },

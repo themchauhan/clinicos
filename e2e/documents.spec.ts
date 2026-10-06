@@ -2,7 +2,7 @@ import path from "node:path";
 import { test, expect } from "@playwright/test";
 import { cleanupTestPatients } from "./utils/cleanup-test-patients";
 import { createPatientViaUi } from "./utils/create-patient";
-import { countAuditLogs, findDocumentId } from "./utils/audit-logs";
+import { countAuditLogs, countDocuments, findDocumentId } from "./utils/audit-logs";
 
 const DEMO_PASSWORD = "demo-password-123!";
 const RECEPTIONIST_EMAIL = "reception@sunrise.test";
@@ -38,6 +38,14 @@ test("upload a patient-level document, view it, and see it fulfil a visit requir
   // for the same document -- .last() lands on the visible one.
   await expect(page.getByText("id-proof.jpg").last()).toBeVisible();
   await expect(page.getByText("Sensitive").last()).toBeVisible();
+
+  // Uploading the exact same file again in the same slot stores nothing
+  // new -- it says so instead.
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
+  await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
+  await page.getByRole("button", { name: "Upload" }).click();
+  await expect(page.getByText("already attached here")).toBeVisible();
+  expect(await countDocuments(patientId, "id-proof.jpg")).toBe(1);
 
   // Viewing a sensitive document logs exactly one audit_logs row.
   const documentId = await findDocumentId(patientId, "id-proof.jpg");

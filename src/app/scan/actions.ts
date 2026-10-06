@@ -4,7 +4,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { resolveScanSession } from "@/lib/scan/resolve-session";
 import { validateFile } from "@/lib/documents/file-validation";
-import { stripExifIfImage } from "@/lib/documents/strip-exif";
+import { optimizeDocumentFile, optimizeStampImage } from "@/lib/documents/optimize-image";
 import { logAuditFromServiceRole } from "@/lib/audit/log";
 import { compositeSignatureWithDeclaration } from "@/lib/documents/signature-composite";
 import { flattenFormTemplate, type StampPlacement } from "@/lib/documents/form-flatten";
@@ -165,13 +165,15 @@ export async function submitScanPage(
     return { error: `A single scan session can hold at most ${MAX_PAGES_PER_SESSION} pages.` };
   }
 
-  const finalBuffer = await stripExifIfImage(rawBuffer, validated.mime);
+  // Bounded + recompressed (and metadata-stripped) before it is stored.
+  const stored = await optimizeDocumentFile(rawBuffer, validated.mime);
+  const finalBuffer = stored.buffer;
   const sha256 = createHash("sha256").update(finalBuffer).digest("hex");
-  const storagePath = `${session.hospital_id}/${session.patient_id}/${randomUUID()}.${validated.ext}`;
+  const storagePath = `${session.hospital_id}/${session.patient_id}/${randomUUID()}.${stored.ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("documents")
-    .upload(storagePath, finalBuffer, { contentType: validated.mime, upsert: false });
+    .upload(storagePath, finalBuffer, { contentType: stored.mime, upsert: false });
   if (uploadError) {
     return { error: "Could not upload the photo. Try again." };
   }
@@ -183,8 +185,8 @@ export async function submitScanPage(
       patient_id: session.patient_id,
       visit_id: session.visit_id,
       document_type_id: session.document_type_id,
-      file_name: file.name || `page-${(existingCount ?? 0) + 1}.${validated.ext}`,
-      file_type: validated.mime,
+      file_name: `page-${(existingCount ?? 0) + 1}.${stored.ext}`,
+      file_type: stored.mime,
       storage_path: storagePath,
       file_size: finalBuffer.byteLength,
       sha256,
@@ -226,7 +228,8 @@ export async function submitScanSignature(
   if (!match) {
     return { error: "Invalid signature data." };
   }
-  const rawSignature = Buffer.from(match[1], "base64");
+  // A drawn signature is a few colours; shrink it before it is stored.
+  const rawSignature = (await optimizeStampImage(Buffer.from(match[1], "base64"))).buffer;
 
   const [{ data: documentType }, { data: patient }] = await Promise.all([
     supabase

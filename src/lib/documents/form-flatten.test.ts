@@ -176,4 +176,37 @@ describe("flattenFormTemplate", () => {
     // signature-only flatten of the same blank PDF.
     expect(withAllThree.byteLength).toBeGreaterThan(signatureOnly.byteLength);
   });
+
+  it("adds little to the blank form's size, even for a large uncompressed signature and seal", async () => {
+    const blankPdf = await makeBlankPdf();
+    // A 1600x600 truecolour PNG with almost nothing in it -- what a
+    // phone's high-DPI signature pad exports -- and a big seal photo.
+    const bigSignature = await sharp({
+      create: { width: 1600, height: 600, channels: 4, background: "#00000000" },
+    })
+      .png({ compressionLevel: 0 })
+      .toBuffer();
+    const bigSeal = await sharp({
+      create: { width: 3000, height: 3000, channels: 3, background: "#cccccc" },
+    })
+      .jpeg({ quality: 100 })
+      .toBuffer();
+
+    const result = await flattenFormTemplate({
+      blankPdf,
+      fields: [{ pageNumber: 1, x: 50, y: 700, fontSize: 12, multiline: false, value: "Jane Doe" }],
+      signature: {
+        pageNumber: 1,
+        x: 50,
+        y: 100,
+        width: 150,
+        height: 50,
+        signaturePng: bigSignature,
+      },
+      seal: { pageNumber: 1, x: 300, y: 100, width: 80, height: 80, image: bigSeal },
+    });
+
+    // Without optimization the embedded images alone are several MB.
+    expect(result.byteLength - blankPdf.byteLength).toBeLessThan(40 * 1024);
+  });
 });

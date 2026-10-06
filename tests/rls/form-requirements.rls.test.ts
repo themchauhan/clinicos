@@ -1,10 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { SEED_ACCOUNTS, serviceRoleClient, signInAs } from "./helpers";
 
 // Same as form-templates.rls.test.ts: RLS needs bytes, not a real PDF.
 const FAKE_PDF = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]);
 
 type Client = Awaited<ReturnType<typeof signInAs>>;
+
+// Retired afterwards (marked inactive) so repeated local runs don't pile
+// up visit types and templates in the settings screens.
+const createdVisitTypeIds: string[] = [];
+const createdTemplateIds: string[] = [];
+
+afterAll(async () => {
+  const sr = serviceRoleClient();
+  if (createdVisitTypeIds.length)
+    await sr.from("visit_types").update({ active: false }).in("id", createdVisitTypeIds);
+  if (createdTemplateIds.length)
+    await sr.from("form_templates").update({ active: false }).in("id", createdTemplateIds);
+});
 
 async function makeTemplate(client: Client, hospitalId: string, name: string) {
   const storagePath = `${hospitalId}/form-templates/${crypto.randomUUID()}.pdf`;
@@ -47,6 +60,8 @@ async function sunriseSetup() {
   const stamp = Date.now();
   const template = await makeTemplate(admin, hospitalId, `Form Req Test Form ${stamp}`);
   const visitType = await makeVisitType(admin, `Form Req Test Type ${stamp}`);
+  createdVisitTypeIds.push(visitType.id);
+  createdTemplateIds.push(template.id);
   return { admin, hospitalId, template, visitType };
 }
 

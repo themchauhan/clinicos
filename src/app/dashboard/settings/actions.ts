@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
 import { validateFile } from "@/lib/documents/file-validation";
 import type { ModuleType, DocumentScope } from "@/types/database";
+import { optimizeStampImage } from "@/lib/documents/optimize-image";
 
 const SIGNED_URL_TTL_SECONDS = 60;
 
@@ -460,10 +461,13 @@ export async function saveHospitalFormProfile(
     if (validated.mime !== "image/png" && validated.mime !== "image/jpeg") {
       return { error: "The seal must be a PNG or JPEG image." };
     }
-    sealStoragePath = `${profile.hospitalId}/hospital-facts/seal.${validated.ext}`;
+    // Bounded and compressed (format kept, so the path's extension and
+    // any transparency stay valid).
+    const seal = await optimizeStampImage(rawBuffer);
+    sealStoragePath = `${profile.hospitalId}/hospital-facts/seal.${seal.ext}`;
     const { error: uploadError } = await supabase.storage
       .from("documents")
-      .upload(sealStoragePath, rawBuffer, { contentType: validated.mime, upsert: true });
+      .upload(sealStoragePath, seal.buffer, { contentType: seal.mime, upsert: true });
     if (uploadError) {
       return { error: "Could not upload the seal image. Try again." };
     }
@@ -537,10 +541,11 @@ export async function uploadDoctorSignature(doctorId: string, formData: FormData
   }
 
   const supabase = await createClient();
-  const signatureStoragePath = `${profile.hospitalId}/doctors/${doctorId}/signature.${validated.ext}`;
+  const signature = await optimizeStampImage(rawBuffer);
+  const signatureStoragePath = `${profile.hospitalId}/doctors/${doctorId}/signature.${signature.ext}`;
   const { error: uploadError } = await supabase.storage
     .from("documents")
-    .upload(signatureStoragePath, rawBuffer, { contentType: validated.mime, upsert: true });
+    .upload(signatureStoragePath, signature.buffer, { contentType: signature.mime, upsert: true });
   if (uploadError) {
     throw new AuthError("Could not upload the signature image. Try again.", 403);
   }

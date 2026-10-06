@@ -772,6 +772,10 @@ export interface Database {
         Args: { p_date: string; p_day_start: string };
         Returns: Database["public"]["Tables"]["patients"]["Row"][];
       };
+      storage_usage_by_hospital: {
+        Args: Record<string, never>;
+        Returns: { hospital_id: string; files: number; bytes: number }[];
+      };
       patient_total: {
         Args: Record<string, never>;
         Returns: number;

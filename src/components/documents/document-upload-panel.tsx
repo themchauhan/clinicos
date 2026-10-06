@@ -250,6 +250,11 @@ export function DocumentUploadPanel({
         </div>
       )}
 
+      {uploadState.notice ? (
+        <p role="status" className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+          {uploadState.notice}
+        </p>
+      ) : null}
       {uploadState.error ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {uploadState.error}

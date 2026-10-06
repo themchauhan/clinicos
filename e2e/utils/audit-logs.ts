@@ -55,3 +55,23 @@ export async function findDocumentId(patientId: string, fileName: string): Promi
   if (error || !data) throw error ?? new Error("document not found");
   return data.id;
 }
+
+/** Test-only: how many (non-deleted) documents with this file name the patient has. */
+export async function countDocuments(patientId: string, fileName: string): Promise<number> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.");
+  }
+  const supabase = createClient(url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { count, error } = await supabase
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("patient_id", patientId)
+    .eq("file_name", fileName)
+    .is("deleted_at", null);
+  if (error) throw error;
+  return count ?? 0;
+}

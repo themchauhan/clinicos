@@ -1,7 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { SEED_ACCOUNTS, anonClient, serviceRoleClient, signInAs } from "./helpers";
 
 type Client = Awaited<ReturnType<typeof signInAs>>;
+
+// Rows these tests create are retired afterwards (marked inactive, the
+// app's own convention -- nothing is hard-deleted), so repeated local runs
+// don't pile up visit types and form templates in the settings screens.
+const createdVisitTypeIds: string[] = [];
+const createdTemplateIds: string[] = [];
+
+afterAll(async () => {
+  const sr = serviceRoleClient();
+  if (createdVisitTypeIds.length)
+    await sr.from("visit_types").update({ active: false }).in("id", createdVisitTypeIds);
+  if (createdTemplateIds.length)
+    await sr.from("form_templates").update({ active: false }).in("id", createdTemplateIds);
+});
 
 const FAKE_PDF = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]);
 
@@ -80,6 +94,8 @@ async function setup() {
     .select()
     .single();
 
+  createdVisitTypeIds.push(visitType!.id);
+  createdTemplateIds.push(template!.id);
   await admin.from("visit_type_document_requirements").insert([
     { visit_type_id: visitType!.id, document_type_id: idProof, required: true },
     { visit_type_id: visitType!.id, document_type_id: visitScopeType, required: true },
@@ -179,5 +195,22 @@ describe("pending_visit_requirements view", () => {
       .select("visit_id")
       .eq("visit_id", visit.id);
     expect(data ?? []).toHaveLength(0);
+  });
+
+  it("the maintenance function is not callable over the API by anyone", async () => {
+    // refresh_pending_requirements rebuilds pending items (for every
+    // centre when called with null). It must stay trigger-only.
+    const call = (client: { rpc: (fn: never, args: never) => PromiseLike<{ error: unknown }> }) =>
+      client.rpc("refresh_pending_requirements" as never, { p_patient_id: null } as never);
+
+    const { error: anonError } = await call(anonClient() as never);
+    expect(anonError).not.toBeNull();
+
+    const admin = await signInAs(SEED_ACCOUNTS.sunrise.admin);
+    const { error: adminError } = await call(admin as never);
+    expect(adminError).not.toBeNull();
+
+    // ...and the triggers that own that job still work after the revoke:
+    // adding a document cleared the pending item in the first test above.
   });
 });

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole } from "@/lib/auth/guards";
+import { formatBytes } from "@/lib/format-bytes";
 import { createClient } from "@/lib/supabase/server";
 import type { HospitalStatus } from "@/types/database";
 
@@ -40,6 +41,26 @@ export default async function AdminPage() {
     .select("id, name, status, plan, trial_ends_at, subscription_ends_at, hospital_modules(module)")
     .order("name");
 
+  const { data: usageRows } = await supabase.rpc("storage_usage_by_hospital");
+  const usage = (hospitals ?? [])
+    .map((h) => {
+      const row = (usageRows ?? []).find((u) => u.hospital_id === h.id);
+      return {
+        id: h.id,
+        name: h.name,
+        files: Number(row?.files ?? 0),
+        bytes: Number(row?.bytes ?? 0),
+      };
+    })
+    .sort((a, b) => b.bytes - a.bytes);
+  const totalBytes = usage.reduce((sum, u) => sum + u.bytes, 0);
+  const totalFiles = usage.reduce((sum, u) => sum + u.files, 0);
+  // Optional: set STORAGE_QUOTA_MB to the plan's file-storage allowance
+  // (e.g. 1024 on Supabase Free) to get a percentage and a warning.
+  const quotaMb = Number(process.env.STORAGE_QUOTA_MB);
+  const quotaBytes = Number.isFinite(quotaMb) && quotaMb > 0 ? quotaMb * 1024 * 1024 : null;
+  const quotaPct = quotaBytes ? Math.round((totalBytes / quotaBytes) * 100) : null;
+
   const counts = STATUS_ORDER.reduce(
     (acc, status) => {
       acc[status] = (hospitals ?? []).filter((h) => h.status === status).length;
@@ -72,6 +93,52 @@ export default async function AdminPage() {
             <p className="mt-2 text-3xl font-semibold text-slate-900">{counts[status]}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold text-slate-900">File storage</h2>
+          <p className="text-sm text-slate-600">
+            {formatBytes(totalBytes)} in {totalFiles} files
+            {quotaBytes ? ` · ${quotaPct}% of ${formatBytes(quotaBytes)}` : ""}
+          </p>
+        </div>
+        {quotaPct !== null ? (
+          <div
+            className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
+            role="progressbar"
+            aria-valuenow={Math.min(quotaPct, 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Storage used"
+          >
+            <div
+              className={`h-full ${quotaPct >= 80 ? "bg-amber-500" : "bg-teal-500"}`}
+              style={{ width: `${Math.min(quotaPct, 100)}%` }}
+            />
+          </div>
+        ) : null}
+        {quotaPct !== null && quotaPct >= 80 ? (
+          <p className="mt-2 text-sm text-amber-700">
+            Storage is {quotaPct}% full — upgrade the plan or free space before it runs out.
+          </p>
+        ) : null}
+        <ul className="mt-4 divide-y divide-slate-100 text-sm">
+          {usage.map((u) => (
+            <li key={u.id} className="flex items-center justify-between gap-3 py-2">
+              <Link href={`/admin/hospitals/${u.id}`} className="text-teal-700 hover:underline">
+                {u.name}
+              </Link>
+              <span className="text-slate-600">
+                {formatBytes(u.bytes)} · {u.files} files
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-xs text-slate-500">
+          Counts uploaded documents, scans and signed forms (including soft-deleted ones, which
+          still use space). Form templates, seals and saved signatures are not included.
+        </p>
       </div>
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

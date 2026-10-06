@@ -7,12 +7,14 @@ import { requireRole, requireActiveTenant } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
 import { validateFile } from "@/lib/documents/file-validation";
-import { stripExifIfImage } from "@/lib/documents/strip-exif";
+import { optimizeDocumentFile } from "@/lib/documents/optimize-image";
 
 const SIGNED_URL_TTL_SECONDS = 60;
 
 export interface UploadDocumentState {
   error?: string;
+  /** Informational, not a failure (e.g. the file was already attached). */
+  notice?: string;
 }
 
 export async function uploadDocument(
@@ -40,15 +42,44 @@ export async function uploadDocument(
     return { error: validated.error };
   }
 
-  const finalBuffer = await stripExifIfImage(rawBuffer, validated.mime);
+  // Bounded + recompressed (and metadata-stripped); PDFs pass through.
+  const stored = await optimizeDocumentFile(rawBuffer, validated.mime);
+  const finalBuffer = stored.buffer;
   const sha256 = createHash("sha256").update(finalBuffer).digest("hex");
-  const storagePath = `${profile.hospitalId}/${target.patientId}/${randomUUID()}.${validated.ext}`;
+  const storagePath = `${profile.hospitalId}/${target.patientId}/${randomUUID()}.${stored.ext}`;
+  // An image is stored as JPEG whatever it arrived as, so its name's
+  // extension has to follow.
+  const fileName =
+    stored.mime === validated.mime
+      ? file.name
+      : file.name.replace(/\.[^.]+$/, "") + "." + stored.ext;
 
   const supabase = await createClient();
 
+  // The same file, in the same slot (patient + visit + document type), is
+  // not stored twice -- staff re-upload by habit and a retry after a
+  // flaky network is common. Compared on the stored bytes' hash.
+  const duplicateQuery = supabase
+    .from("documents")
+    .select("id")
+    .eq("patient_id", target.patientId)
+    .eq("document_type_id", documentTypeId)
+    .eq("sha256", sha256)
+    .is("deleted_at", null);
+  const { data: duplicate } = await (
+    target.visitId
+      ? duplicateQuery.eq("visit_id", target.visitId)
+      : duplicateQuery.is("visit_id", null)
+  )
+    .limit(1)
+    .maybeSingle();
+  if (duplicate) {
+    return { notice: "That exact file is already attached here, so nothing new was stored." };
+  }
+
   const { error: uploadError } = await supabase.storage
     .from("documents")
-    .upload(storagePath, finalBuffer, { contentType: validated.mime, upsert: false });
+    .upload(storagePath, finalBuffer, { contentType: stored.mime, upsert: false });
   if (uploadError) {
     return { error: "Could not upload the file. Try again." };
   }
@@ -59,8 +90,8 @@ export async function uploadDocument(
       patient_id: target.patientId,
       visit_id: target.visitId ?? null,
       document_type_id: documentTypeId,
-      file_name: file.name,
-      file_type: validated.mime,
+      file_name: fileName,
+      file_type: stored.mime,
       storage_path: storagePath,
       file_size: finalBuffer.byteLength,
       sha256,

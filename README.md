@@ -388,6 +388,48 @@ e2e/                 Playwright e2e tests
   policies — squarely a Phase 9 (security hardening) task, not this
   one.
 
+## Storage & file sizes
+
+File storage (and the bandwidth to view it) is what a small deployment
+runs out of first, so everything stored passes through
+`src/lib/documents/optimize-image.ts` (server-side, `sharp`) first:
+
+- **Documents, ID proofs and scanned pages**: auto-rotated, fitted within
+  2000 px, saved as JPEG at quality 75 (a 12 MP phone photo of 3-6 MB
+  becomes ~300-500 KB with the text still legible). PNG photos are stored
+  as JPEG; PDFs pass through unchanged. EXIF/GPS metadata is dropped.
+  Nothing is resized on the phone or in the browser — staff and patients
+  never wait on it.
+- **Seals, doctor signatures and drawn patient signatures**: format kept
+  (PNG transparency survives), fitted within 800 px, PNGs palette-
+  compressed. They are embedded in every filled form, so their size
+  multiplies.
+- **Duplicates**: the same file in the same slot (patient + visit +
+  document type) is not stored twice; the user is told instead.
+- **Form templates are capped at 2 MB**: every filled, signed copy repeats
+  the whole template, so a 5 MB scanned form becomes 5 MB per patient.
+  Compress the PDF before uploading it.
+- The platform admin console shows storage used per centre. Set the
+  optional server-only `STORAGE_QUOTA_MB` (e.g. `1024` on Supabase Free,
+  `102400` on Pro) for a percentage and an 80% warning. Soft-deleted
+  documents still count: they still occupy space. Plan for the Pro tier
+  before real patient data — the free tier (about 1 GB of files, 500 MB of
+  database) pauses on inactivity and fills quickly.
+- Existing files are not recompressed retroactively.
+
+## Database functions & API exposure
+
+Supabase grants `EXECUTE` on every new function to `anon` and
+`authenticated` through default privileges, and `revoke ... from public`
+does **not** remove those grants. PostgREST exposes anything they can
+execute as an RPC endpoint. So every new `SECURITY DEFINER` or
+maintenance function needs an explicit
+`revoke execute on function ... from public, anon` (and from
+`authenticated` too if only triggers should run it, as with
+`refresh_pending_requirements`). See
+`20261005000034_lock_down_function_execute.sql`, and the RLS test that
+asserts the maintenance function cannot be called.
+
 ## Required forms & pending requirements
 
 - Fillable forms can be marked **Required** per visit type (Settings →

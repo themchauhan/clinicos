@@ -5,6 +5,7 @@
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { detectFileType } from "@/lib/documents/file-validation";
+import { optimizeStampImage } from "@/lib/documents/optimize-image";
 
 /** Simple greedy word wrap -- good enough for an address-length field, not typeset-quality (same spirit as signature-composite.ts's wrapText). */
 function wrapText(text: string, maxCharsPerLine: number): string[] {
@@ -65,8 +66,11 @@ async function drawImagePlacement(
   pdfDoc: PDFDocument,
   page: PDFPage,
   box: { x: number; y: number; width: number; height: number },
-  imageBytes: Buffer,
+  rawImageBytes: Buffer,
 ) {
+  // Bounded and palette-compressed on the way in: this image is
+  // embedded in every filled copy of the form, so its size multiplies.
+  const imageBytes = (await optimizeStampImage(rawImageBytes)).buffer;
   const detected = detectFileType(imageBytes);
   const image =
     detected?.mime === "image/jpeg"

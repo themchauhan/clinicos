@@ -63,14 +63,18 @@ export async function compositeSignatureWithDeclaration(input: {
     <text x="16" y="26" font-family="sans-serif" font-size="12" fill="#555555">Signed by ${escapeXml(input.patientName)} — ${escapeXml(new Date().toISOString())}</text>
   </svg>`;
 
-  return sharp({
-    create: { width, height: totalHeight, channels: 4, background: "#ffffff" },
-  })
-    .composite([
-      { input: Buffer.from(headerSvg), left: 0, top: 0 },
-      { input: input.signaturePng, left: 0, top: headerHeight },
-      { input: Buffer.from(footerSvg), left: 0, top: headerHeight + signatureHeight },
-    ])
-    .png()
-    .toBuffer();
+  return (
+    sharp({
+      create: { width, height: totalHeight, channels: 4, background: "#ffffff" },
+    })
+      .composite([
+        { input: Buffer.from(headerSvg), left: 0, top: 0 },
+        { input: input.signaturePng, left: 0, top: headerHeight },
+        { input: Buffer.from(footerSvg), left: 0, top: headerHeight + signatureHeight },
+      ])
+      // Text on white, a handful of colours: palette PNG is a fraction
+      // of the size of a truecolour one with no visible difference.
+      .png({ palette: true, quality: 80, compressionLevel: 9 })
+      .toBuffer()
+  );
 }

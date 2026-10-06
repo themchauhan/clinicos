@@ -6,7 +6,7 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole, requireActiveTenant, AuthError } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
-import { validateFile } from "@/lib/documents/file-validation";
+import { MAX_FORM_TEMPLATE_BYTES, validateFile } from "@/lib/documents/file-validation";
 import { readPdfPageSize } from "@/lib/documents/form-flatten";
 import type { FormFieldInputType } from "@/types/database";
 
@@ -88,6 +88,11 @@ export async function createFormTemplate(
   }
   if (validated.mime !== "application/pdf") {
     return { error: "Form templates must be uploaded as a PDF." };
+  }
+  if (rawBuffer.byteLength > MAX_FORM_TEMPLATE_BYTES) {
+    return {
+      error: `This PDF is ${(rawBuffer.byteLength / (1024 * 1024)).toFixed(1)} MB. Form templates must be ${MAX_FORM_TEMPLATE_BYTES / (1024 * 1024)} MB or smaller, because every filled copy of the form repeats the whole file. Re-export or compress the PDF (a lower scan quality is fine) and try again.`,
+    };
   }
 
   let fields: FormTemplateFieldInput[];
