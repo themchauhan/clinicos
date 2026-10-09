@@ -80,3 +80,72 @@ export async function optimizeStampImage(buffer: Buffer): Promise<StoredImage> {
   const out = await base.png({ palette: true, quality: 80, compressionLevel: 9 }).toBuffer();
   return { buffer: out, mime: "image/png", ext: "png" };
 }
+
+/** Width the two sides of an ID are normalised to before stacking. */
+export const ID_MERGE_MAX_WIDTH_PX = 1600;
+const ID_MERGE_GAP_PX = 32;
+/** Slightly higher than ordinary photos: the sides arrive already compressed once. */
+const ID_MERGE_JPEG_QUALITY = 80;
+
+export type IdSide = "front" | "back";
+
+/**
+ * Stacks the front and the back of an ID into ONE image, front on top: a
+ * single document to open instead of two, and (compressed like any other
+ * photo) about the size one raw photo used to be.
+ *
+ * Both sides are auto-rotated, brought to the same width (never enlarged:
+ * the narrower photo sets it, capped at 1600px so a 12MP photo doesn't
+ * make a 4000px tall image), and separated by a small white gap. EXIF
+ * (including GPS) is dropped like everywhere else.
+ */
+export async function mergeIdSides(front: Buffer, back: Buffer): Promise<StoredImage> {
+  const [fm, bm] = await Promise.all([
+    sharp(front, { failOn: "none" }).rotate().toBuffer({ resolveWithObject: true }),
+    sharp(back, { failOn: "none" }).rotate().toBuffer({ resolveWithObject: true }),
+  ]);
+  const width = Math.min(ID_MERGE_MAX_WIDTH_PX, fm.info.width, bm.info.width);
+
+  const fit = (data: Buffer) =>
+    sharp(data, { failOn: "none" })
+      .resize({ width, withoutEnlargement: true })
+      .flatten({ background: "#ffffff" })
+      .toBuffer({ resolveWithObject: true });
+  const [f, b] = await Promise.all([fit(fm.data), fit(bm.data)]);
+
+  const merged = await sharp({
+    create: {
+      width,
+      height: f.info.height + ID_MERGE_GAP_PX + b.info.height,
+      channels: 3,
+      background: "#ffffff",
+    },
+  })
+    .composite([
+      { input: f.data, left: 0, top: 0 },
+      { input: b.data, left: 0, top: f.info.height + ID_MERGE_GAP_PX },
+    ])
+    .jpeg({ quality: ID_MERGE_JPEG_QUALITY, mozjpeg: true })
+    .toBuffer();
+
+  return { buffer: merged, mime: "image/jpeg", ext: "jpg" };
+}
+
+/**
+ * One or both sides of an ID, stored as a single image: both -> merged,
+ * either alone -> that side on its own (optimised like any document photo).
+ */
+export async function optimizeIdSides(sides: {
+  front?: Buffer;
+  back?: Buffer;
+}): Promise<(StoredImage & { label: "front + back" | "front" | "back" }) | null> {
+  if (sides.front && sides.back) {
+    return { ...(await mergeIdSides(sides.front, sides.back)), label: "front + back" };
+  }
+  const only = sides.front ?? sides.back;
+  if (!only) return null;
+  return {
+    ...(await optimizeDocumentFile(only, "image/jpeg")),
+    label: sides.front ? "front" : "back",
+  };
+}

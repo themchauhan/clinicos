@@ -221,6 +221,7 @@ export async function createDocumentType(
   const sensitive = formData.get("sensitive") === "on";
   const pcPndtForm = formData.get("pcPndtForm") === "on";
   const requiresSignature = formData.get("requiresSignature") === "on";
+  const twoSided = formData.get("twoSided") === "on";
 
   if (!name) {
     return { error: "Enter a name." };
@@ -252,6 +253,7 @@ export async function createDocumentType(
     sensitive,
     pc_pndt_form: pcPndtForm,
     requires_signature: requiresSignature,
+    two_sided: twoSided,
     version: nextVersion,
     effective_from: new Date().toISOString().slice(0, 10),
   });
@@ -291,6 +293,7 @@ export async function updateDocumentType(
   const sensitive = formData.get("sensitive") === "on";
   const pcPndtForm = formData.get("pcPndtForm") === "on";
   const requiresSignature = formData.get("requiresSignature") === "on";
+  const twoSided = formData.get("twoSided") === "on";
   const active = formData.get("active") === "on";
 
   if (!name) {
@@ -312,6 +315,7 @@ export async function updateDocumentType(
       sensitive,
       pc_pndt_form: pcPndtForm,
       requires_signature: requiresSignature,
+      two_sided: twoSided,
       active,
     })
     .eq("id", documentTypeId);

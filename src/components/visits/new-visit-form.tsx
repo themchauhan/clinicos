@@ -14,6 +14,7 @@ interface Option {
 
 interface VisitTypeOption extends Option {
   defaultFee: number | null;
+  module: "GENERAL_OPD" | "USG";
 }
 
 function SubmitButton() {
@@ -43,10 +44,13 @@ export function NewVisitForm({
   const [state, formAction] = useActionState(action, initialState);
   const [feeAmount, setFeeAmount] = useState("0");
   const [feeTouched, setFeeTouched] = useState(false);
+  const [visitTypeId, setVisitTypeId] = useState("");
+  const isUsg = visitTypes.find((vt) => vt.id === visitTypeId)?.module === "USG";
 
-  function handleVisitTypeChange(visitTypeId: string) {
+  function handleVisitTypeChange(selectedId: string) {
+    setVisitTypeId(selectedId);
     if (feeTouched) return;
-    const visitType = visitTypes.find((vt) => vt.id === visitTypeId);
+    const visitType = visitTypes.find((vt) => vt.id === selectedId);
     setFeeAmount(visitType?.defaultFee != null ? String(visitType.defaultFee) : "0");
   }
 
@@ -132,6 +136,24 @@ export function NewVisitForm({
           className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
         />
       </div>
+
+      {isUsg ? (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="lmpDate" className="text-sm font-medium">
+            Last menstrual period (LMP)
+          </label>
+          <input
+            id="lmpDate"
+            name="lmpDate"
+            type="date"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600"
+          />
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Optional. Gives the weeks of pregnancy printed on PC-PNDT forms; you can add it later
+            from the visit.
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="followUpDate" className="text-sm font-medium">

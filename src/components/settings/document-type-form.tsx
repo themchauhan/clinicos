@@ -19,6 +19,7 @@ export interface DocumentTypeDefaults {
   sensitive?: boolean;
   pcPndtForm?: boolean;
   requiresSignature?: boolean;
+  twoSided?: boolean;
   active?: boolean;
 }
 
@@ -155,6 +156,14 @@ export function DocumentTypeForm({
             defaultChecked={defaults?.requiresSignature ?? false}
           />
           Requires signature
+        </label>
+
+        <label
+          className="flex items-center gap-2 pb-2 text-sm"
+          title="Capture asks for the front and the back, and stores them as one image (e.g. Aadhaar, voter ID)."
+        >
+          <input type="checkbox" name="twoSided" defaultChecked={defaults?.twoSided ?? false} />
+          Front and back (two-sided ID)
         </label>
 
         {documentTypeId ? (

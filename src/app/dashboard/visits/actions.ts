@@ -6,6 +6,8 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole, requireActiveTenant, AuthError } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
+import { validateLmp } from "@/lib/visits/lmp";
+import { todayInAppTimezone } from "@/lib/visits/today";
 import type { PaymentMode, VisitStatus } from "@/types/database";
 
 export interface CreateVisitState {
@@ -35,6 +37,12 @@ export async function createVisit(
     return { error: "Fee must be a positive number." };
   }
 
+  // A new visit is dated today (India time, the database's own default).
+  const lmp = validateLmp(String(formData.get("lmpDate") ?? ""), todayInAppTimezone());
+  if ("error" in lmp) {
+    return { error: lmp.error };
+  }
+
   const supabase = await createClient();
   const { data: visit, error } = await supabase
     .from("visits")
@@ -47,6 +55,7 @@ export async function createVisit(
       referred_by_hospital: referredByHospital,
       fee_amount: feeAmount,
       follow_up_date: followUpDate,
+      lmp_date: lmp.value,
     })
     .select("id")
     .single();
@@ -176,4 +185,46 @@ export async function setVisitExaminationStatus(
   revalidatePath(`/dashboard/visits/${visitId}`);
   revalidatePath("/dashboard/usg");
   return {};
+}
+
+export interface UpdateLmpState {
+  error?: string;
+  saved?: boolean;
+}
+
+/**
+ * Sets (or clears) a visit's last menstrual period after the fact -- it is
+ * often not known at the desk and added when the patient is in with the
+ * doctor. The weeks of pregnancy printed on forms are worked out from it.
+ */
+export async function updateVisitLmp(
+  visitId: string,
+  _prevState: UpdateLmpState,
+  formData: FormData,
+): Promise<UpdateLmpState> {
+  requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN", "RECEPTIONIST"]));
+
+  const supabase = await createClient();
+  const { data: visit } = await supabase
+    .from("visits")
+    .select("visit_date")
+    .eq("id", visitId)
+    .maybeSingle();
+  if (!visit) {
+    return { error: "Visit not found." };
+  }
+
+  const lmp = validateLmp(String(formData.get("lmpDate") ?? ""), visit.visit_date);
+  if ("error" in lmp) {
+    return { error: lmp.error };
+  }
+
+  const { error } = await supabase.from("visits").update({ lmp_date: lmp.value }).eq("id", visitId);
+  if (error) {
+    return { error: "Could not save the LMP. Try again." };
+  }
+
+  await logAudit({ action: "visit.lmp_updated", targetType: "visit", targetId: visitId });
+  revalidatePath(`/dashboard/visits/${visitId}`);
+  return { saved: true };
 }

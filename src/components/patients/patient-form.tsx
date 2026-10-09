@@ -19,6 +19,10 @@ export interface PatientFormDefaults {
   guardianRelation?: GuardianRelation | null;
   gender?: PatientGender | null;
   address?: string | null;
+  livingSons?: number | null;
+  livingSonsAges?: string | null;
+  livingDaughters?: number | null;
+  livingDaughtersAges?: string | null;
 }
 
 function SubmitButton({ label }: { label: string }) {
@@ -171,6 +175,54 @@ export function PatientForm({
             defaultValue={effectiveDefaults?.address ?? undefined}
           />
         </div>
+
+        {/* Only needed for PC-PNDT Form F, so tucked away: the form stays
+            one screen, and opens by itself when there is something saved. */}
+        <details
+          className="rounded-md border border-slate-200 px-3 py-2 sm:col-span-6"
+          open={
+            effectiveDefaults?.livingSons != null ||
+            effectiveDefaults?.livingDaughters != null ||
+            Boolean(effectiveDefaults?.livingSonsAges) ||
+            Boolean(effectiveDefaults?.livingDaughtersAges)
+          }
+        >
+          <summary className="cursor-pointer text-sm font-medium text-slate-700 select-none">
+            Children (asked on PC-PNDT Form F)
+          </summary>
+          <div className="mt-3 grid gap-x-4 gap-y-4 sm:grid-cols-4">
+            <Field
+              label="Living sons"
+              name="livingSons"
+              type="number"
+              min={0}
+              defaultValue={effectiveDefaults?.livingSons ?? undefined}
+            />
+            <div className="sm:col-span-3">
+              <Field
+                label="Age of each son"
+                name="livingSonsAges"
+                placeholder="e.g. 6 years"
+                defaultValue={effectiveDefaults?.livingSonsAges ?? undefined}
+              />
+            </div>
+            <Field
+              label="Living daughters"
+              name="livingDaughters"
+              type="number"
+              min={0}
+              defaultValue={effectiveDefaults?.livingDaughters ?? undefined}
+            />
+            <div className="sm:col-span-3">
+              <Field
+                label="Age of each daughter"
+                name="livingDaughtersAges"
+                placeholder="e.g. 4 years, 8 months"
+                defaultValue={effectiveDefaults?.livingDaughtersAges ?? undefined}
+              />
+            </div>
+          </div>
+        </details>
       </div>
 
       {state.duplicates && state.duplicates.length > 0 ? (

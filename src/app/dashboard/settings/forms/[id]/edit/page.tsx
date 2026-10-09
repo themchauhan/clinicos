@@ -64,12 +64,15 @@ export default async function EditFormTemplatePage({
               fieldKey: f.field_key,
               label: f.label,
               inputType: f.input_type,
+              checklistKey: f.checklist_key,
+              tickMarks: f.tick_marks,
               pageNumber: f.page_number,
               x: f.x,
               y: f.y,
               fontSize: f.font_size,
               displayOrder: f.display_order,
             }))}
+          initialExtraStamps={template.extra_stamps ?? []}
           initialSignature={{
             pageNumber: template.signature_page,
             x: template.signature_x,

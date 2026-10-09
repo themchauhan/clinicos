@@ -2,6 +2,7 @@ import path from "node:path";
 import { test, expect } from "@playwright/test";
 import { cleanupTestPatients } from "./utils/cleanup-test-patients";
 import { createPatientViaUi } from "./utils/create-patient";
+import { countDocuments } from "./utils/audit-logs";
 
 const DEMO_PASSWORD = "demo-password-123!";
 const RECEPTIONIST_EMAIL = "reception@sunrise.test";
@@ -43,33 +44,75 @@ test("scan with phone: desktop QR session, a separate browser context uploads pa
   await expect(phonePage.getByText("ID Proof")).toBeVisible();
   await expect(phonePage.getByText(name)).toBeVisible();
 
-  // Page 1.
+  // ID Proof is two-sided: the phone asks for the front, then the back.
+  await expect(phonePage.getByText("Take a photo of the front")).toBeVisible();
   await phonePage.locator('input[type="file"]').setInputFiles(ID_PROOF_JPEG);
   await phonePage.getByRole("button", { name: "Use this photo" }).click();
-  await expect(phonePage.getByText("Page 1")).toBeVisible();
+  await expect(phonePage.getByText("Front", { exact: true })).toBeVisible();
 
-  // Page 2. No need to click the "Add another page" label first —
-  // clicking a label that wraps a hidden file input would try to open
-  // a real native file-picker dialog in the browser and hang the
-  // test; setInputFiles() sets the input's files directly regardless
-  // of visibility.
-  await expect(phonePage.getByText("Add another page")).toBeVisible();
+  // Now the back. (setInputFiles directly, not a click on the label that
+  // wraps the hidden input, which would open a native file picker.)
+  await expect(phonePage.getByText("Take a photo of the back")).toBeVisible();
   await phonePage.locator('input[type="file"]').setInputFiles(ID_PROOF_JPEG);
   await phonePage.getByRole("button", { name: "Use this photo" }).click();
-  await expect(phonePage.getByText("Page 2")).toBeVisible();
+  await expect(phonePage.getByText("Back", { exact: true })).toBeVisible();
+  await expect(phonePage.getByText("Both sides captured")).toBeVisible();
 
-  // Desktop polls every ~2.5s and refreshes; wait for it to notice
-  // both pages before finishing on the phone.
-  await expect(page.getByText("2 pages uploaded so far…")).toBeVisible({ timeout: 10_000 });
+  // Desktop polls every ~2.5s and refreshes; wait for it to notice both
+  // sides before finishing on the phone.
+  await expect(page.getByText("2 sides of the ID captured so far…")).toBeVisible({
+    timeout: 10_000,
+  });
 
   await phonePage.getByRole("button", { name: "Finish" }).click();
   await expect(phonePage.getByText("Done")).toBeVisible();
-  await expect(phonePage.getByText("2 pages uploaded for")).toBeVisible();
+  await expect(phonePage.getByText("ID Proof saved for")).toBeVisible();
 
-  // Desktop reflects completion and the document actually landed on
-  // the patient's document list.
-  await expect(page.getByText("Scan finished — 2 pages added.")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator("td", { hasText: "ID Proof" }).first()).toBeVisible();
+  // Desktop reflects completion, and what landed is ONE merged document --
+  // not two pages.
+  await expect(page.getByText("Scan finished — the ID was saved as one image.")).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByText("ID Proof (front + back).jpg").last()).toBeVisible();
+  const patientId = page.url().match(/\/dashboard\/patients\/([0-9a-f-]+)/)![1];
+  expect(await countDocuments(patientId, "ID Proof (front + back).jpg")).toBe(1);
+  // The two working pages were retired.
+  expect(await countDocuments(patientId, "front.jpg")).toBe(0);
+  expect(await countDocuments(patientId, "back.jpg")).toBe(0);
+
+  await phoneContext.close();
+});
+
+test("scanning only the front of an ID (skipping the back) stores that one side", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(RECEPTIONIST_EMAIL);
+  await page.getByLabel("Password").fill(DEMO_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  const name = `E2E Scan Test Patient ${Date.now()}`;
+  await createPatientViaUi(page, { name });
+  const patientId = page.url().match(/\/dashboard\/patients\/([0-9a-f-]+)/)![1];
+
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
+  await page.getByRole("button", { name: "Scan with phone" }).click();
+  const scanUrl = await page.locator('a[href*="/scan#"]').getAttribute("href");
+
+  const phoneContext = await context.browser()!.newContext();
+  const phonePage = await phoneContext.newPage();
+  await phonePage.goto(scanUrl!);
+
+  await phonePage.locator('input[type="file"]').setInputFiles(ID_PROOF_JPEG);
+  await phonePage.getByRole("button", { name: "Use this photo" }).click();
+  await expect(phonePage.getByText("Take a photo of the back")).toBeVisible();
+  await phonePage.getByRole("button", { name: "Skip the back — front only" }).click();
+  await expect(phonePage.getByText("ID Proof saved for")).toBeVisible();
+
+  await expect(page.getByText("ID Proof (front).jpg").last()).toBeVisible({ timeout: 10_000 });
+  expect(await countDocuments(patientId, "ID Proof (front).jpg")).toBe(1);
 
   await phoneContext.close();
 });

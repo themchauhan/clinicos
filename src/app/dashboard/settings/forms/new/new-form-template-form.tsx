@@ -34,6 +34,7 @@ export function NewFormTemplateForm() {
     signature: null,
     seal: null,
     doctorSignature: null,
+    extraStamps: [],
   });
   const router = useRouter();
 
@@ -85,7 +86,13 @@ export function NewFormTemplateForm() {
           required
           onChange={(e) => {
             setFile(e.target.files?.[0] ?? null);
-            setLayout({ fields: [], signature: null, seal: null, doctorSignature: null });
+            setLayout({
+              fields: [],
+              signature: null,
+              seal: null,
+              doctorSignature: null,
+              extraStamps: [],
+            });
           }}
           className="text-sm file:mr-3 file:rounded-md file:border file:border-zinc-300 file:bg-transparent file:px-3 file:py-1.5 file:text-sm dark:file:border-zinc-700"
         />

@@ -6,8 +6,7 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole, requireActiveTenant } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
-import { validateFile } from "@/lib/documents/file-validation";
-import { optimizeDocumentFile } from "@/lib/documents/optimize-image";
+import { prepareUploadFromForm } from "@/lib/documents/prepare-upload";
 
 const SIGNED_URL_TTL_SECONDS = 60;
 
@@ -31,30 +30,30 @@ export async function uploadDocument(
     return { error: "Choose a document type." };
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose a file to upload." };
+  const supabase = await createClient();
+
+  // Whether this type is captured as front + back is the document type's
+  // own setting, read here -- never taken from the request.
+  const { data: documentType } = await supabase
+    .from("document_types")
+    .select("name, two_sided")
+    .eq("id", documentTypeId)
+    .eq("active", true)
+    .maybeSingle();
+  if (!documentType) {
+    return { error: "Choose a document type." };
   }
 
-  const rawBuffer = Buffer.from(await file.arrayBuffer());
-  const validated = validateFile(rawBuffer);
-  if ("error" in validated) {
-    return { error: validated.error };
+  // Validated, bounded and recompressed; a two-sided ID's sides are merged
+  // into one image. PDFs pass through.
+  const prepared = await prepareUploadFromForm(formData, documentType);
+  if ("error" in prepared) {
+    return { error: prepared.error };
   }
-
-  // Bounded + recompressed (and metadata-stripped); PDFs pass through.
-  const stored = await optimizeDocumentFile(rawBuffer, validated.mime);
+  const { stored, fileName } = prepared;
   const finalBuffer = stored.buffer;
   const sha256 = createHash("sha256").update(finalBuffer).digest("hex");
   const storagePath = `${profile.hospitalId}/${target.patientId}/${randomUUID()}.${stored.ext}`;
-  // An image is stored as JPEG whatever it arrived as, so its name's
-  // extension has to follow.
-  const fileName =
-    stored.mime === validated.mime
-      ? file.name
-      : file.name.replace(/\.[^.]+$/, "") + "." + stored.ext;
-
-  const supabase = await createClient();
 
   // The same file, in the same slot (patient + visit + document type), is
   // not stored twice -- staff re-upload by habit and a retry after a

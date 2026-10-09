@@ -39,6 +39,10 @@ export default async function EditPatientPage({ params }: { params: Promise<{ id
             guardianRelation: patient.guardian_relation,
             gender: patient.gender,
             address: patient.address,
+            livingSons: patient.living_sons,
+            livingSonsAges: patient.living_sons_ages,
+            livingDaughters: patient.living_daughters,
+            livingDaughtersAges: patient.living_daughters_ages,
           }}
         />
       </div>

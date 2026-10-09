@@ -4,6 +4,7 @@ import {
   type PatientFieldSource,
   type HospitalFieldSource,
   type DoctorFieldSource,
+  type VisitFieldSource,
 } from "./form-field-sources";
 
 const patient: PatientFieldSource = {
@@ -133,5 +134,126 @@ describe("resolveKnownFieldValue", () => {
     const third = resolveKnownFieldValue("doctor.name#3", { patient, hospital, doctor });
     expect(second).toBe(first);
     expect(third).toBe("Dr. Test Doctor");
+  });
+
+  describe("visit and Form F sources", () => {
+    const visit: VisitFieldSource = {
+      date: "2026-10-09",
+      typeName: "Pregnancy/Obstetric USG",
+      module: "USG",
+      referredByName: "Dr Test Referrer",
+      referredByHospital: "Test Referral Clinic",
+      lmpDate: "2026-06-01",
+    };
+    const ctx = { patient, hospital, doctor, visit };
+
+    it("resolves the visit's date, type and referrer", () => {
+      expect(resolveKnownFieldValue("visit.date", ctx)).toBe("2026-10-09");
+      expect(resolveKnownFieldValue("visit.type_name", ctx)).toBe("Pregnancy/Obstetric USG");
+      expect(resolveKnownFieldValue("visit.referred_by", ctx)).toBe(
+        "Dr Test Referrer, Test Referral Clinic",
+      );
+      expect(resolveKnownFieldValue("visit.referred_by_name", ctx)).toBe("Dr Test Referrer");
+      expect(resolveKnownFieldValue("visit.referred_by_hospital", ctx)).toBe(
+        "Test Referral Clinic",
+      );
+    });
+
+    it("joins only the referrer parts that exist", () => {
+      const onlyName = { ...ctx, visit: { ...visit, referredByHospital: null } };
+      expect(resolveKnownFieldValue("visit.referred_by", onlyName)).toBe("Dr Test Referrer");
+      const none = { ...ctx, visit: { ...visit, referredByName: null, referredByHospital: " " } };
+      expect(resolveKnownFieldValue("visit.referred_by", none)).toBe("");
+    });
+
+    it("works out the weeks of pregnancy from the LMP and the visit date", () => {
+      expect(resolveKnownFieldValue("visit.lmp_date", ctx)).toBe("2026-06-01");
+      expect(resolveKnownFieldValue("visit.gestational_age", ctx)).toBe("18 weeks 4 days");
+      const noLmp = { ...ctx, visit: { ...visit, lmpDate: null } };
+      expect(resolveKnownFieldValue("visit.gestational_age", noLmp)).toBe("");
+    });
+
+    it("gives the LMP and the weeks of pregnancy together, or just the date, or nothing", () => {
+      expect(resolveKnownFieldValue("visit.lmp_with_weeks", ctx)).toBe(
+        "01/06/2026, 18 weeks 4 days",
+      );
+      // An LMP after the visit date has no weeks: the date alone is still shown.
+      const odd = { ...ctx, visit: { ...visit, date: "2026-05-01" } };
+      expect(resolveKnownFieldValue("visit.lmp_with_weeks", odd)).toBe("01/06/2026");
+      const none = { ...ctx, visit: { ...visit, lmpDate: null } };
+      expect(resolveKnownFieldValue("visit.lmp_with_weeks", none)).toBe("");
+    });
+
+    it("ticks for an ultrasound visit only", () => {
+      expect(resolveKnownFieldValue("visit.is_usg", ctx)).toBe("1");
+      const opd = { ...ctx, visit: { ...visit, module: "GENERAL_OPD" as const } };
+      expect(resolveKnownFieldValue("visit.is_usg", opd)).toBe("");
+    });
+
+    it("is blank, not an error, when the form is filled without a visit", () => {
+      const noVisit = { patient, hospital, doctor };
+      for (const key of [
+        "visit.date",
+        "visit.type_name",
+        "visit.referred_by",
+        "visit.gestational_age",
+        "visit.is_usg",
+      ]) {
+        expect(resolveKnownFieldValue(key, noVisit)).toBe("");
+      }
+    });
+
+    it("resolves a repeated visit source (#2) like the first", () => {
+      expect(resolveKnownFieldValue("visit.date#2", ctx)).toBe("2026-10-09");
+    });
+  });
+
+  describe("children, contact and relationship sources", () => {
+    const withKids = {
+      ...patient,
+      guardianRelation: "W/O",
+      livingSons: 1,
+      livingSonsAges: "6 years",
+      livingDaughters: 2,
+      livingDaughtersAges: "4 years, 8 months",
+    };
+    const ctx = { patient: withKids, hospital, doctor };
+
+    it("resolves the children's counts, total and ages", () => {
+      expect(resolveKnownFieldValue("patient.sons_count", ctx)).toBe("1");
+      expect(resolveKnownFieldValue("patient.sons_ages", ctx)).toBe("6 years");
+      expect(resolveKnownFieldValue("patient.daughters_count", ctx)).toBe("2");
+      expect(resolveKnownFieldValue("patient.daughters_ages", ctx)).toBe("4 years, 8 months");
+      expect(resolveKnownFieldValue("patient.children_total", ctx)).toBe("3");
+    });
+
+    it("leaves everything blank when children were never recorded, and counts one-sided entries", () => {
+      expect(resolveKnownFieldValue("patient.children_total", { patient, hospital, doctor })).toBe(
+        "",
+      );
+      expect(resolveKnownFieldValue("patient.sons_count", { patient, hospital, doctor })).toBe("");
+      const onlyDaughters = { ...ctx, patient: { ...withKids, livingSons: null } };
+      expect(resolveKnownFieldValue("patient.children_total", onlyDaughters)).toBe("2");
+    });
+
+    it("gives address and mobile together, and the guardian's role in words", () => {
+      expect(resolveKnownFieldValue("patient.contact", ctx)).toBe(
+        "123 Test Street, Mobile: 9999999999",
+      );
+      const noMobile = { ...ctx, patient: { ...withKids, mobile: null } };
+      expect(resolveKnownFieldValue("patient.contact", noMobile)).toBe("123 Test Street");
+
+      expect(resolveKnownFieldValue("patient.guardian_relationship", ctx)).toBe("Husband");
+      for (const [relation, word] of [
+        ["S/O", "Father"],
+        ["D/O", "Father"],
+        ["H/O", "Wife"],
+        ["C/O", "Relative"],
+        [null, ""],
+      ] as const) {
+        const c = { ...ctx, patient: { ...withKids, guardianRelation: relation } };
+        expect(resolveKnownFieldValue("patient.guardian_relationship", c)).toBe(word);
+      }
+    });
   });
 });

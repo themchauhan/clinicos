@@ -51,7 +51,7 @@ test("create a patient, find them by name/mobile/code, then edit them", async ({
 
   await expect(page).toHaveURL(/\/dashboard\/patients\/[0-9a-f-]+$/);
   await expect(page.getByText("12 Test Street")).toBeVisible();
-  await expect(page.getByText("W/O Test Guardian")).toBeVisible();
+  await expect(page.locator("dd", { hasText: "W/O Test Guardian" })).toBeVisible();
 
   // The main dashboard's Patients card is the total on file -- never 0
   // once a patient exists, whatever day they were registered.

@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { PdfCanvas, pdfPointToCanvasPixel, type PdfPageInfo, type PdfPoint } from "./pdf-canvas";
-import type { FormFieldInputType } from "@/types/database";
+import type { ExtraStamp, FormFieldInputType } from "@/types/database";
 import type {
   FormTemplateFieldInput,
   SignatureBoxInput,
   SealBoxInput,
   DoctorSignatureBoxInput,
-} from "@/app/dashboard/settings/forms/actions";
+} from "@/lib/documents/form-layout";
+import { CHECKLISTS } from "@/lib/documents/checklists";
+import { FORM_F_PAGE_COUNT, FORM_F_PRESET } from "@/lib/documents/presets/form-f";
 import {
   PATIENT_FIELD_OPTIONS,
   HOSPITAL_FIELD_OPTIONS,
   DOCTOR_FIELD_OPTIONS,
+  VISIT_FIELD_OPTIONS,
   OTHER_FIELD_OPTIONS,
 } from "@/lib/documents/form-field-sources";
 
@@ -21,11 +24,14 @@ const KNOWN_FIELD_OPTIONS = [
   ...PATIENT_FIELD_OPTIONS,
   ...HOSPITAL_FIELD_OPTIONS,
   ...DOCTOR_FIELD_OPTIONS,
+  ...VISIT_FIELD_OPTIONS,
   ...OTHER_FIELD_OPTIONS,
 ];
 // Sources whose value is inherently a date -- picking one should set
 // the field's Type to "date" too, not leave it defaulted to Text.
-const DATE_SOURCE_KEYS: readonly string[] = ["system.today"];
+const DATE_SOURCE_KEYS: readonly string[] = ["system.today", "visit.date", "visit.lmp_date"];
+// ...and a source that is a yes/no belongs in a tick box.
+const TICK_SOURCE_KEYS: readonly string[] = ["visit.is_usg"];
 
 /**
  * A known source (e.g. "Today's date") can legitimately be placed
@@ -49,6 +55,8 @@ const INPUT_TYPE_LABELS: Record<FormFieldInputType, string> = {
   text: "Text",
   date: "Date",
   textarea: "Long text",
+  tick: "Tick mark",
+  checklist: "Checklist (pick from a list)",
 };
 
 export interface FormLayout {
@@ -56,6 +64,8 @@ export interface FormLayout {
   signature: SignatureBoxInput | null;
   seal: SealBoxInput | null;
   doctorSignature: DoctorSignatureBoxInput | null;
+  /** Further seal / doctor-signature placements beyond the first of each. */
+  extraStamps: ExtraStamp[];
 }
 
 /**
@@ -78,6 +88,7 @@ export function FormTemplateDesigner({
   initialSignature = null,
   initialSeal = null,
   initialDoctorSignature = null,
+  initialExtraStamps = [],
 }: {
   file: File | string;
   onLayoutChange: (layout: FormLayout) => void;
@@ -85,6 +96,7 @@ export function FormTemplateDesigner({
   initialSignature?: SignatureBoxInput | null;
   initialSeal?: SealBoxInput | null;
   initialDoctorSignature?: DoctorSignatureBoxInput | null;
+  initialExtraStamps?: ExtraStamp[];
 }) {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageInfo, setPageInfo] = useState<PdfPageInfo | null>(null);
@@ -94,12 +106,14 @@ export function FormTemplateDesigner({
   const [doctorSignature, setDoctorSignature] = useState<DoctorSignatureBoxInput | null>(
     initialDoctorSignature,
   );
+  const [extraStamps, setExtraStamps] = useState<ExtraStamp[]>(initialExtraStamps);
   const [mode, setMode] = useState<"field" | "signature" | "seal" | "doctorSignature" | null>(null);
   const [pendingClick, setPendingClick] = useState<PdfPoint | null>(null);
   const [pendingSource, setPendingSource] = useState<string>(CUSTOM_SOURCE);
   const [pendingKey, setPendingKey] = useState("");
   const [pendingLabel, setPendingLabel] = useState("");
   const [pendingType, setPendingType] = useState<FormFieldInputType>("text");
+  const [pendingChecklist, setPendingChecklist] = useState<string>(Object.keys(CHECKLISTS)[0]);
 
   function selectSource(value: string) {
     setPendingSource(value);
@@ -112,22 +126,19 @@ export function FormTemplateDesigner({
     if (option) {
       setPendingKey(option.key);
       setPendingLabel(option.label);
-      setPendingType(DATE_SOURCE_KEYS.includes(option.key) ? "date" : "text");
+      setPendingType(
+        DATE_SOURCE_KEYS.includes(option.key)
+          ? "date"
+          : TICK_SOURCE_KEYS.includes(option.key)
+            ? "tick"
+            : "text",
+      );
     }
   }
 
-  function emit(
-    nextFields: FormTemplateFieldInput[],
-    nextSignature: SignatureBoxInput | null,
-    nextSeal: SealBoxInput | null,
-    nextDoctorSignature: DoctorSignatureBoxInput | null,
-  ) {
-    onLayoutChange({
-      fields: nextFields,
-      signature: nextSignature,
-      seal: nextSeal,
-      doctorSignature: nextDoctorSignature,
-    });
+  /** Reports the layout upward, with `next` overriding what is stored in state. */
+  function commit(next: Partial<FormLayout>) {
+    onLayoutChange({ fields, signature, seal, doctorSignature, extraStamps, ...next });
   }
 
   function handleClickAt(point: PdfPoint) {
@@ -140,27 +151,36 @@ export function FormTemplateDesigner({
         height: 50,
       };
       setSignature(box);
-      emit(fields, box, seal, doctorSignature);
+      commit({ signature: box });
       setMode(null);
       return;
     }
-    if (mode === "seal") {
-      const box: SealBoxInput = { pageNumber, x: point.xPt, y: point.yPt, width: 120, height: 60 };
-      setSeal(box);
-      emit(fields, signature, box, doctorSignature);
-      setMode(null);
-      return;
-    }
-    if (mode === "doctorSignature") {
-      const box: DoctorSignatureBoxInput = {
-        pageNumber,
-        x: point.xPt,
-        y: point.yPt,
-        width: 160,
-        height: 50,
-      };
-      setDoctorSignature(box);
-      emit(fields, signature, seal, box);
+    if (mode === "seal" || mode === "doctorSignature") {
+      // The first click of each kind sets the form's own placement; any
+      // further click ADDS another (Form F wants the doctor's signature
+      // and the seal in several places).
+      const isSeal = mode === "seal";
+      const size = isSeal ? { width: 120, height: 60 } : { width: 160, height: 50 };
+      const box = { pageNumber, x: point.xPt, y: point.yPt, ...size };
+      const primary = isSeal ? seal : doctorSignature;
+      if (!primary) {
+        if (isSeal) setSeal(box);
+        else setDoctorSignature(box);
+        commit(isSeal ? { seal: box } : { doctorSignature: box });
+      } else {
+        const next: ExtraStamp[] = [
+          ...extraStamps,
+          {
+            kind: isSeal ? "SEAL" : "DOCTOR_SIGNATURE",
+            page: pageNumber,
+            x: point.xPt,
+            y: point.yPt,
+            ...size,
+          },
+        ];
+        setExtraStamps(next);
+        commit({ extraStamps: next });
+      }
       setMode(null);
       return;
     }
@@ -181,6 +201,7 @@ export function FormTemplateDesigner({
         fieldKey,
         label: pendingLabel.trim(),
         inputType: pendingType,
+        checklistKey: pendingType === "checklist" ? pendingChecklist : null,
         pageNumber,
         x: pendingClick.xPt,
         y: pendingClick.yPt,
@@ -189,7 +210,7 @@ export function FormTemplateDesigner({
       },
     ];
     setFields(next);
-    emit(next, signature, seal, doctorSignature);
+    commit({ fields: next });
     cancelPendingField();
   }
 
@@ -205,27 +226,84 @@ export function FormTemplateDesigner({
   function removeField(index: number) {
     const next = fields.filter((_, i) => i !== index);
     setFields(next);
-    emit(next, signature, seal, doctorSignature);
+    commit({ fields: next });
   }
 
   function removeSignature() {
     setSignature(null);
-    emit(fields, null, seal, doctorSignature);
+    commit({ signature: null });
   }
 
-  function removeSeal() {
-    setSeal(null);
-    emit(fields, signature, null, doctorSignature);
+  /** Removing the form's own seal / doctor-signature placement promotes the
+   * first extra one of that kind, so the others aren't lost. */
+  function removePrimaryStamp(kind: ExtraStamp["kind"]) {
+    const promoted = extraStamps.find((e) => e.kind === kind);
+    const rest = promoted ? extraStamps.filter((e) => e !== promoted) : extraStamps;
+    const box = promoted
+      ? {
+          pageNumber: promoted.page,
+          x: promoted.x,
+          y: promoted.y,
+          width: promoted.width,
+          height: promoted.height,
+        }
+      : null;
+    setExtraStamps(rest);
+    if (kind === "SEAL") {
+      setSeal(box);
+      commit({ seal: box, extraStamps: rest });
+    } else {
+      setDoctorSignature(box);
+      commit({ doctorSignature: box, extraStamps: rest });
+    }
   }
 
-  function removeDoctorSignature() {
-    setDoctorSignature(null);
-    emit(fields, signature, seal, null);
+  function removeExtraStamp(stamp: ExtraStamp) {
+    const next = extraStamps.filter((e) => e !== stamp);
+    setExtraStamps(next);
+    commit({ extraStamps: next });
+  }
+
+  /** Replaces everything placed so far with the ready-made Form F layout. */
+  function applyFormFPreset() {
+    if (
+      (fields.length > 0 || signature || seal || doctorSignature || extraStamps.length > 0) &&
+      !window.confirm("This replaces everything you have placed so far. Continue?")
+    ) {
+      return;
+    }
+    const layout: FormLayout = {
+      fields: FORM_F_PRESET.fields.map((f) => ({ ...f })),
+      signature: FORM_F_PRESET.signature,
+      seal: FORM_F_PRESET.seal,
+      doctorSignature: FORM_F_PRESET.doctorSignature,
+      extraStamps: FORM_F_PRESET.extraStamps.map((e) => ({ ...e })),
+    };
+    setFields(layout.fields);
+    setSignature(layout.signature);
+    setSeal(layout.seal);
+    setDoctorSignature(layout.doctorSignature);
+    setExtraStamps(layout.extraStamps);
+    cancelPendingField();
+    setMode(null);
+    commit(layout);
   }
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <div className="flex flex-col gap-2">
+        {pageInfo?.pageCount === FORM_F_PAGE_COUNT ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-teal-200 bg-teal-50 p-2 text-sm dark:border-teal-900 dark:bg-teal-950">
+            <span>Is this the standard PC-PNDT Form F?</span>
+            <button
+              type="button"
+              onClick={applyFormFPreset}
+              className="rounded-md bg-teal-600 px-3 py-1 text-sm font-medium text-white hover:bg-teal-700"
+            >
+              Use the standard Form F layout
+            </button>
+          </div>
+        ) : null}
         {pageInfo && pageInfo.pageCount > 1 ? (
           <div className="flex items-center gap-2 text-sm">
             <label htmlFor="designer-page" className="font-medium">
@@ -322,6 +400,22 @@ export function FormTemplateDesigner({
                           );
                         })()
                       : null}
+                    {extraStamps
+                      .filter((e) => e.page === pageNumber)
+                      .map((e, i) => {
+                        const pos = pdfPointToCanvasPixel(e, pageInfo, renderedWidthPx);
+                        return (
+                          <span
+                            key={`extra-${i}`}
+                            className={`pointer-events-none absolute -translate-y-full rounded px-1.5 py-0.5 text-[11px] font-medium text-white ${
+                              e.kind === "SEAL" ? "bg-purple-600/90" : "bg-blue-600/90"
+                            }`}
+                            style={{ left: pos.left, top: pos.top }}
+                          >
+                            {e.kind === "SEAL" ? "Seal" : "Doctor\u2019s signature"}
+                          </span>
+                        );
+                      })}
                   </>
                 );
               })()
@@ -371,7 +465,11 @@ export function FormTemplateDesigner({
                 : "rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
             }
           >
-            {mode === "seal" ? "Click the form to place the seal…" : "+ Place seal (optional)"}
+            {mode === "seal"
+              ? "Click the form to place the seal…"
+              : seal
+                ? "+ Place another seal"
+                : "+ Place seal (optional)"}
           </button>
           <button
             type="button"
@@ -387,7 +485,9 @@ export function FormTemplateDesigner({
           >
             {mode === "doctorSignature"
               ? "Click the form to place the doctor's signature…"
-              : "+ Place doctor's signature (optional)"}
+              : doctorSignature
+                ? "+ Place another doctor's signature"
+                : "+ Place doctor's signature (optional)"}
           </button>
         </div>
 
@@ -420,6 +520,13 @@ export function FormTemplateDesigner({
                 </optgroup>
                 <optgroup label="Doctor">
                   {DOCTOR_FIELD_OPTIONS.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Visit">
+                  {VISIT_FIELD_OPTIONS.map((o) => (
                     <option key={o.key} value={o.key}>
                       {o.label}
                     </option>
@@ -477,6 +584,25 @@ export function FormTemplateDesigner({
                 ))}
               </select>
             </div>
+            {pendingType === "checklist" ? (
+              <div className="flex flex-col gap-1">
+                <label htmlFor="pending-checklist" className="text-xs font-medium">
+                  List
+                </label>
+                <select
+                  id="pending-checklist"
+                  value={pendingChecklist}
+                  onChange={(e) => setPendingChecklist(e.target.value)}
+                  className="w-56 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm outline-none focus:border-teal-600"
+                >
+                  {Object.values(CHECKLISTS).map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={confirmField}
@@ -538,38 +664,78 @@ export function FormTemplateDesigner({
         )}
 
         <p className="mt-3 text-sm font-medium">Seal (optional)</p>
-        {seal ? (
-          <div className="flex items-center justify-between gap-2 text-sm">
-            <span>
-              Page {seal.pageNumber}, ({Math.round(seal.x)}, {Math.round(seal.y)})
-            </span>
-            <button
-              type="button"
-              onClick={removeSeal}
-              className="text-xs text-red-600 underline dark:text-red-400"
-            >
-              Remove
-            </button>
-          </div>
+        {seal || extraStamps.some((e) => e.kind === "SEAL") ? (
+          <ul className="flex flex-col gap-1 text-sm">
+            {seal ? (
+              <li className="flex items-center justify-between gap-2">
+                <span>
+                  Page {seal.pageNumber}, ({Math.round(seal.x)}, {Math.round(seal.y)})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removePrimaryStamp("SEAL")}
+                  className="text-xs text-red-600 underline dark:text-red-400"
+                >
+                  Remove
+                </button>
+              </li>
+            ) : null}
+            {extraStamps
+              .filter((e) => e.kind === "SEAL")
+              .map((e, i) => (
+                <li key={`seal-${i}`} className="flex items-center justify-between gap-2">
+                  <span>
+                    Page {e.page}, ({Math.round(e.x)}, {Math.round(e.y)})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeExtraStamp(e)}
+                    className="text-xs text-red-600 underline dark:text-red-400"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+          </ul>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Not placed.</p>
         )}
 
         <p className="mt-3 text-sm font-medium">Doctor&apos;s signature (optional)</p>
-        {doctorSignature ? (
-          <div className="flex items-center justify-between gap-2 text-sm">
-            <span>
-              Page {doctorSignature.pageNumber}, ({Math.round(doctorSignature.x)},{" "}
-              {Math.round(doctorSignature.y)})
-            </span>
-            <button
-              type="button"
-              onClick={removeDoctorSignature}
-              className="text-xs text-red-600 underline dark:text-red-400"
-            >
-              Remove
-            </button>
-          </div>
+        {doctorSignature || extraStamps.some((e) => e.kind === "DOCTOR_SIGNATURE") ? (
+          <ul className="flex flex-col gap-1 text-sm">
+            {doctorSignature ? (
+              <li className="flex items-center justify-between gap-2">
+                <span>
+                  Page {doctorSignature.pageNumber}, ({Math.round(doctorSignature.x)},{" "}
+                  {Math.round(doctorSignature.y)})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removePrimaryStamp("DOCTOR_SIGNATURE")}
+                  className="text-xs text-red-600 underline dark:text-red-400"
+                >
+                  Remove
+                </button>
+              </li>
+            ) : null}
+            {extraStamps
+              .filter((e) => e.kind === "DOCTOR_SIGNATURE")
+              .map((e, i) => (
+                <li key={`doc-${i}`} className="flex items-center justify-between gap-2">
+                  <span>
+                    Page {e.page}, ({Math.round(e.x)}, {Math.round(e.y)})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeExtraStamp(e)}
+                    className="text-xs text-red-600 underline dark:text-red-400"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+          </ul>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Not placed.</p>
         )}

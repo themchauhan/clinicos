@@ -12,6 +12,8 @@ import { DocumentList } from "@/components/documents/document-list";
 import { StatusTransitionButtons } from "@/components/visits/status-transition-buttons";
 import { PrintSlipButton } from "@/components/visits/print-slip-button";
 import { FormFillPanel, type FormStatus } from "@/components/visits/form-fill-panel";
+import { LmpForm } from "@/components/visits/lmp-form";
+import { formatGestationalAge } from "@/lib/visits/gestational-age";
 import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Visit — ClinicOS" };
@@ -26,7 +28,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
   const { data: visit } = await supabase
     .from("visits")
     .select(
-      "*, patients(id, name, patient_code, guardian_name, guardian_relation, address, mobile, dob, approximate_age_years, gender), visit_types(name, module), doctors(name, registration_no), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
+      "*, patients(id, name, patient_code, guardian_name, guardian_relation, address, mobile, dob, approximate_age_years, gender, living_sons, living_sons_ages, living_daughters, living_daughters_ages), visit_types(name, module), doctors(name, registration_no), visit_payments(id, amount, mode, note, reference_number, is_reversal, received_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -56,7 +58,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
       .eq("visit_id", visit.id),
     supabase
       .from("document_types")
-      .select("id, name, requires_signature")
+      .select("id, name, requires_signature, two_sided")
       .eq("scope", "VISIT")
       .eq("active", true),
     supabase
@@ -71,7 +73,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
     supabase
       .from("form_templates")
       .select(
-        "id, name, description, form_template_fields(field_key, label, input_type, display_order)",
+        "id, name, description, form_template_fields(field_key, label, input_type, checklist_key, display_order)",
       )
       .eq("active", true)
       .order("name"),
@@ -186,6 +188,20 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
 
         <dt className="text-zinc-500 dark:text-zinc-400">Follow-up</dt>
         <dd>{visit.follow_up_date ?? "—"}</dd>
+
+        {visit.visit_types!.module === "USG" ? (
+          <>
+            <dt className="pt-1 text-zinc-500 dark:text-zinc-400">LMP</dt>
+            <dd className="flex flex-col gap-1">
+              <LmpForm visitId={visit.id} lmpDate={visit.lmp_date} />
+              {visit.lmp_date ? (
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  {formatGestationalAge(visit.lmp_date, visit.visit_date)} of pregnancy
+                </span>
+              ) : null}
+            </dd>
+          </>
+        ) : null}
 
         <dt className="text-zinc-500 dark:text-zinc-400">Notes</dt>
         <dd>{visit.notes ?? "—"}</dd>
@@ -335,6 +351,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
                     fieldKey: f.field_key,
                     label: f.label,
                     inputType: f.input_type,
+                    checklistKey: f.checklist_key,
                     displayOrder: f.display_order,
                   })),
                 ]),
@@ -350,6 +367,18 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
                 dob: visit.patients!.dob,
                 approximateAgeYears: visit.patients!.approximate_age_years,
                 gender: visit.patients!.gender,
+                livingSons: visit.patients!.living_sons,
+                livingSonsAges: visit.patients!.living_sons_ages,
+                livingDaughters: visit.patients!.living_daughters,
+                livingDaughtersAges: visit.patients!.living_daughters_ages,
+              }}
+              visit={{
+                date: visit.visit_date,
+                typeName: visit.visit_types!.name,
+                module: visit.visit_types!.module,
+                referredByName: visit.referred_by_name,
+                referredByHospital: visit.referred_by_hospital,
+                lmpDate: visit.lmp_date,
               }}
               hospital={{
                 name: hospitalRow?.name ?? "—",

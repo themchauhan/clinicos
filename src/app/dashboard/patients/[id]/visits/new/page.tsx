@@ -17,7 +17,11 @@ export default async function NewVisitPage({ params }: { params: Promise<{ id: s
       .eq("id", patientId)
       .is("deleted_at", null)
       .maybeSingle(),
-    supabase.from("visit_types").select("id, name, default_fee").eq("active", true).order("name"),
+    supabase
+      .from("visit_types")
+      .select("id, name, default_fee, module")
+      .eq("active", true)
+      .order("name"),
     supabase.from("doctors").select("id, name").eq("active", true).order("name"),
   ]);
 
@@ -36,6 +40,7 @@ export default async function NewVisitPage({ params }: { params: Promise<{ id: s
             id: vt.id,
             name: vt.name,
             defaultFee: vt.default_fee,
+            module: vt.module,
           }))}
           doctors={doctors ?? []}
         />

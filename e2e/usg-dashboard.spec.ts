@@ -34,12 +34,12 @@ test("a pregnancy/obstetric USG visit moves through the dashboard columns as its
   // — fulfil it once at the patient level before checking columns
   // below, or the visit would show as "Documents pending" forever.
   await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
-  await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
+  await page.locator('input[type="file"]#front').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
   // The document list renders a mobile card (first in the DOM, hidden
   // via CSS at this test's desktop viewport) and a desktop table row
   // for the same document -- .last() lands on the visible one.
-  await expect(page.getByText("id-proof.jpg").last()).toBeVisible();
+  await expect(page.getByText("ID Proof (front).jpg").last()).toBeVisible();
 
   await page.getByRole("link", { name: "New visit" }).click();
   await page.getByLabel("Visit type").selectOption({ label: "Pregnancy/Obstetric USG" });

@@ -79,7 +79,8 @@ test("pair a device once, send a request to it, and disconnect", async ({ page, 
 
   await phonePage.locator('input[type="file"]').setInputFiles(ID_PROOF_JPEG);
   await phonePage.getByRole("button", { name: "Use this photo" }).click();
-  await expect(phonePage.getByText("Page 1")).toBeVisible();
+  // ID Proof is two-sided; finishing after the front stores the front alone.
+  await expect(phonePage.getByText("Front", { exact: true })).toBeVisible();
   await phonePage.getByRole("button", { name: "Finish" }).click();
   await expect(phonePage.getByText("Done")).toBeVisible();
   // Reached via the paired device, not a fresh QR -- offers a way back
@@ -87,7 +88,9 @@ test("pair a device once, send a request to it, and disconnect", async ({ page, 
   await expect(phonePage.getByRole("link", { name: "Back to waiting" })).toBeVisible();
 
   // Desktop reflects completion.
-  await expect(page.getByText("Scan finished — 1 page added.")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Scan finished — the ID was saved as one image.")).toBeVisible({
+    timeout: 10_000,
+  });
 
   // Disconnect, from the dedicated devices page.
   await page.goto("/dashboard/devices");

@@ -478,6 +478,31 @@ Last financial year (Indian, 1 April to 31 March) or This calendar year.
   every page view. The "All patients" badge and the dashboard total come
   from `patient_total()`, an exact count of the patients on file.
 
+## Two-sided IDs, guardian ID, and PC-PNDT Form F
+
+- A document type can be **two-sided** (Settings → Document types; "ID
+  Proof" and the new "Guardian / Relative ID Proof" are). Staff upload or
+  scan the front and the back (either alone is fine) and the server joins
+  them into ONE image (`mergeIdSides` in `src/lib/documents/optimize-image.ts`;
+  phone scans finish through `src/lib/scan/finalize-id-sides.ts`). The
+  guardian / husband / relative's ID is its own slot, separate from the
+  patient's own.
+- Form templates support tick boxes, **checklists** (the 23 PC-PNDT
+  indications, `src/lib/documents/checklists.ts`, with a tick drawn
+  beside each chosen item) and several seal / doctor-signature
+  placements. New auto-fill sources cover the visit (date, type,
+  referrer, LMP and weeks of pregnancy), contact details and children.
+  The designer offers **"Use the standard Form F layout"** for the
+  5-page official PDF (`src/lib/documents/presets/form-f.ts`; Section C,
+  invasive procedures, is intentionally left blank).
+- Children (patient) and LMP (visit) are captured on the patient / visit
+  forms. Results, who they were conveyed to, MTP and findings are typed at
+  fill time and never stored; the foetal sex is never asked for.
+- Migrations `20261009000038`-`40` add `document_types.two_sided`, the
+  children / LMP columns, `form_template_fields.input_type` checklist /
+  tick + `checklist_key` + `tick_marks`, and `form_templates.extra_stamps`.
+  Apply them to the staging / production databases before deploying.
+
 ## Deployment notes
 
 - `NEXT_PUBLIC_APP_URL` must be set to the deployment's public origin

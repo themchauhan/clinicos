@@ -40,3 +40,10 @@
 - Expired access links do not remain valid
 - Missing required documents are visible as "pending", not silently
   absent
+
+## Manual test steps — later additions
+
+- **Two-sided ID:** on a patient, choose "ID Proof", add a front and a
+  back image, Upload: one document named "ID Proof (front + back)".
+  Adding only one side stores "(front)" / "(back)". "Guardian / Relative
+  ID Proof" is a separate slot. Scan with phone walks front, then back.

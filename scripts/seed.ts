@@ -188,10 +188,24 @@ async function main() {
         name: "ID Proof",
         scope: "PATIENT",
         sensitive: true,
+        two_sided: true,
       })
       .select()
       .single();
     if (idProofError || !idProofType) throw idProofError;
+
+    // A second ID slot for the guardian / husband / relative who comes
+    // with the patient. Not required by default -- the Admin decides per
+    // visit type in Settings.
+    const { error: guardianIdError } = await supabase.from("document_types").insert({
+      hospital_id: hospital.id,
+      name: "Guardian / Relative ID Proof",
+      description: "ID of the husband, parent or other relative accompanying the patient.",
+      scope: "PATIENT",
+      sensitive: true,
+      two_sided: true,
+    });
+    if (guardianIdError) throw guardianIdError;
 
     const requirements: { visit_type_id: string; document_type_id: string }[] = (
       insertedVisitTypes ?? []

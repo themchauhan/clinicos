@@ -25,7 +25,25 @@ export type PaymentMode = "CASH" | "UPI" | "CARD" | "OTHER";
 export type PaymentStatus = "UNPAID" | "PARTIAL" | "PAID";
 export type DocumentScope = "PATIENT" | "VISIT";
 export type ScanSessionStatus = "PENDING" | "COMPLETED" | "CANCELLED";
-export type FormFieldInputType = "text" | "date" | "textarea";
+export type FormFieldInputType = "text" | "date" | "textarea" | "tick" | "checklist";
+
+/** A further placement of the hospital seal / the doctor's saved signature on a form template. */
+/** Where a checklist item's tick mark is drawn when it is selected. */
+export interface TickMark {
+  code: string;
+  page: number;
+  x: number;
+  y: number;
+}
+
+export interface ExtraStamp {
+  kind: "SEAL" | "DOCTOR_SIGNATURE";
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export interface Database {
   public: {
@@ -182,6 +200,11 @@ export interface Database {
           approximate_age_years: number | null;
           guardian_name: string | null;
           guardian_relation: GuardianRelation | null;
+          /** For PC-PNDT Form F item 4: living children and their ages. */
+          living_sons: number | null;
+          living_sons_ages: string | null;
+          living_daughters: number | null;
+          living_daughters_ages: string | null;
           gender: PatientGender | null;
           address: string | null;
           created_at: string;
@@ -269,6 +292,8 @@ export interface Database {
           updated_at: string;
           referred_by_name: string | null;
           referred_by_hospital: string | null;
+          /** Last menstrual period (USG visits); weeks of pregnancy are derived from it. */
+          lmp_date: string | null;
         };
         // hospital_id and visit_number both default at the database
         // level, so neither is required here (same as patients).
@@ -352,6 +377,8 @@ export interface Database {
           effective_from: string;
           pc_pndt_form: boolean;
           requires_signature: boolean;
+          /** Capture asks for front and back and stores one merged image. */
+          two_sided: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -577,6 +604,8 @@ export interface Database {
           doctor_signature_y: number | null;
           doctor_signature_width: number | null;
           doctor_signature_height: number | null;
+          /** Further seal / doctor-signature placements beyond the first of each. */
+          extra_stamps: ExtraStamp[];
           created_at: string;
           updated_at: string;
         };
@@ -606,6 +635,10 @@ export interface Database {
           y: number;
           font_size: number;
           display_order: number;
+          /** Which built-in list a 'checklist' field offers (see lib/documents/checklists). */
+          checklist_key: string | null;
+          /** Checklist fields: a tick drawn per selected item, at its own position. */
+          tick_marks: TickMark[];
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["form_template_fields"]["Row"]> & {

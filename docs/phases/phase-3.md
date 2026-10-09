@@ -54,3 +54,13 @@ Run once against a local instance:
   "Required — not filled" above the upload row, the visit counts as
   Documents pending (dashboard, USG board, Pending documents); sign the
   form and it clears. A female patient on a USG visit shows the hint.
+- **Children & LMP:** on a patient form, open "Children" and enter sons /
+  daughters with ages; the profile shows them. On a new USG visit enter
+  the LMP; the visit page shows "N weeks of pregnancy"; a future LMP is
+  refused.
+- **Form F:** Settings → Forms → New: upload the 5-page Form F PDF, press
+  "Use the standard Form F layout", save. On a USG visit press Fill: the
+  children, referrer, LMP/weeks, centre and doctor are pre-filled;
+  result / conveyed-to / MTP are empty; tick some indications and sign;
+  the PDF shows ticks beside those items and the doctor's seal and
+  signature on pages 3 and 4.

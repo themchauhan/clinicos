@@ -6,6 +6,7 @@ import { requireRole, requireActiveTenant } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
 import type { PatientGender } from "@/types/database";
+import { parseChildren } from "@/lib/patients/children";
 import { isGuardianRelation, type GuardianRelation } from "@/lib/patients/guardian";
 
 // Digits only, with an optional leading "+" for a country code --
@@ -23,6 +24,10 @@ interface PatientFields {
   guardianRelation: GuardianRelation | null;
   gender: PatientGender | null;
   address: string | null;
+  livingSons: number | null;
+  livingSonsAges: string | null;
+  livingDaughters: number | null;
+  livingDaughtersAges: string | null;
 }
 
 export interface PatientFormState {
@@ -81,6 +86,11 @@ function readPatientFields(formData: FormData): PatientFields | { error: string 
     return { error: "Approximate age must be a positive number." };
   }
 
+  const children = parseChildren((key) => String(formData.get(key) ?? ""));
+  if ("error" in children) {
+    return { error: children.error };
+  }
+
   return {
     name,
     mobile,
@@ -90,6 +100,7 @@ function readPatientFields(formData: FormData): PatientFields | { error: string 
     guardianRelation,
     gender,
     address,
+    ...children.children,
   };
 }
 
@@ -137,6 +148,10 @@ export async function createPatient(
       approximate_age_years: fields.approximateAgeYears,
       guardian_name: fields.guardianName,
       guardian_relation: fields.guardianRelation,
+      living_sons: fields.livingSons,
+      living_sons_ages: fields.livingSonsAges,
+      living_daughters: fields.livingDaughters,
+      living_daughters_ages: fields.livingDaughtersAges,
       gender: fields.gender,
       address: fields.address,
     })
@@ -179,6 +194,10 @@ export async function updatePatient(
       approximate_age_years: fields.approximateAgeYears,
       guardian_name: fields.guardianName,
       guardian_relation: fields.guardianRelation,
+      living_sons: fields.livingSons,
+      living_sons_ages: fields.livingSonsAges,
+      living_daughters: fields.livingDaughters,
+      living_daughters_ages: fields.livingDaughtersAges,
       gender: fields.gender,
       address: fields.address,
     })

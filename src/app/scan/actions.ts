@@ -6,8 +6,11 @@ import { resolveScanSession } from "@/lib/scan/resolve-session";
 import { validateFile } from "@/lib/documents/file-validation";
 import { optimizeDocumentFile, optimizeStampImage } from "@/lib/documents/optimize-image";
 import { logAuditFromServiceRole } from "@/lib/audit/log";
+import { finalizeIdSides } from "@/lib/scan/finalize-id-sides";
+import { formatChecklistValue, getChecklist } from "@/lib/documents/checklists";
 import { compositeSignatureWithDeclaration } from "@/lib/documents/signature-composite";
-import { flattenFormTemplate, type StampPlacement } from "@/lib/documents/form-flatten";
+import { flattenFormTemplate } from "@/lib/documents/form-flatten";
+import { buildFlattenParts } from "@/lib/documents/form-render";
 
 // Nothing in this file trusts a Supabase Auth session — there isn't
 // one. The raw token from the QR/link is the only credential; every
@@ -26,7 +29,9 @@ export type ScanSessionInfoResult =
       documentTypeName: string;
       documentTypeDescription: string | null;
       requiresSignature: boolean;
-      existingPages: { id: string; pageNo: number }[];
+      /** An ID: captured as front, then back, and stored as one image. */
+      twoSided: boolean;
+      existingPages: { id: string; pageNo: number; side: "front" | "back" | null }[];
     }
   | {
       kind: "form";
@@ -37,6 +42,19 @@ export type ScanSessionInfoResult =
       fields: { label: string; value: string }[];
     }
   | { error: "invalid" | "expired" | "completed" };
+
+/** How a filled value reads to the patient on the signing screen. */
+function displayFieldValue(inputType: string, checklistKey: string | null, value: string): string {
+  if (inputType === "tick") {
+    const v = value.trim().toLowerCase();
+    return v !== "" && v !== "0" && v !== "false" && v !== "no" ? "Ticked" : "";
+  }
+  if (inputType === "checklist") {
+    const list = getChecklist(checklistKey);
+    return list ? formatChecklistValue(value, list) : value;
+  }
+  return value;
+}
 
 export async function getScanSessionInfo(rawToken: string): Promise<ScanSessionInfoResult> {
   const supabase = createServiceRoleClient();
@@ -61,7 +79,7 @@ export async function getScanSessionInfo(rawToken: string): Promise<ScanSessionI
         .single(),
       supabase
         .from("form_template_fields")
-        .select("field_key, label, display_order")
+        .select("field_key, label, input_type, checklist_key, display_order")
         .eq("form_template_id", session.form_template_id)
         .order("display_order", { ascending: true }),
     ]);
@@ -75,7 +93,7 @@ export async function getScanSessionInfo(rawToken: string): Promise<ScanSessionI
       formTemplateDescription: template?.description ?? null,
       fields: (templateFields ?? []).map((f) => ({
         label: f.label,
-        value: values[f.field_key] ?? "",
+        value: displayFieldValue(f.input_type, f.checklist_key, values[f.field_key] ?? ""),
       })),
     };
   }
@@ -83,12 +101,12 @@ export async function getScanSessionInfo(rawToken: string): Promise<ScanSessionI
   const [{ data: documentType }, { data: pages }] = await Promise.all([
     supabase
       .from("document_types")
-      .select("name, description, requires_signature")
+      .select("name, description, requires_signature, two_sided")
       .eq("id", session.document_type_id!)
       .single(),
     supabase
       .from("documents")
-      .select("id, page_no")
+      .select("id, page_no, file_name")
       .eq("scan_session_id", session.id)
       .is("deleted_at", null)
       .order("page_no", { ascending: true }),
@@ -101,7 +119,16 @@ export async function getScanSessionInfo(rawToken: string): Promise<ScanSessionI
     documentTypeName: documentType?.name ?? "—",
     documentTypeDescription: documentType?.description ?? null,
     requiresSignature: documentType?.requires_signature ?? false,
-    existingPages: (pages ?? []).map((p) => ({ id: p.id, pageNo: p.page_no ?? 0 })),
+    twoSided: documentType?.two_sided ?? false,
+    existingPages: (pages ?? []).map((p) => ({
+      id: p.id,
+      pageNo: p.page_no ?? 0,
+      side: p.file_name.startsWith("front.")
+        ? ("front" as const)
+        : p.file_name.startsWith("back.")
+          ? ("back" as const)
+          : null,
+    })),
   };
 }
 
@@ -165,6 +192,33 @@ export async function submitScanPage(
     return { error: `A single scan session can hold at most ${MAX_PAGES_PER_SESSION} pages.` };
   }
 
+  // An ID is captured one side at a time. Whether this type is two-sided
+  // is read from the database; the phone only says which side it is
+  // sending. Front is page 1 and back is page 2 whatever order they come
+  // in, so "back only" works, and a side can't be sent twice.
+  const { data: documentType } = await supabase
+    .from("document_types")
+    .select("two_sided")
+    .eq("id", session.document_type_id!)
+    .single();
+  let side: "front" | "back" | null = null;
+  if (documentType?.two_sided) {
+    const sent = formData.get("side");
+    if (sent !== "front" && sent !== "back") {
+      return { error: "Say whether this is the front or the back." };
+    }
+    side = sent;
+    const { count: sameSide } = await supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("scan_session_id", session.id)
+      .eq("page_no", side === "front" ? 1 : 2)
+      .is("deleted_at", null);
+    if ((sameSide ?? 0) > 0) {
+      return { error: `The ${side} side is already captured. Delete it first to retake it.` };
+    }
+  }
+
   // Bounded + recompressed (and metadata-stripped) before it is stored.
   const stored = await optimizeDocumentFile(rawBuffer, validated.mime);
   const finalBuffer = stored.buffer;
@@ -185,12 +239,12 @@ export async function submitScanPage(
       patient_id: session.patient_id,
       visit_id: session.visit_id,
       document_type_id: session.document_type_id,
-      file_name: `page-${(existingCount ?? 0) + 1}.${stored.ext}`,
+      file_name: side ? `${side}.${stored.ext}` : `page-${(existingCount ?? 0) + 1}.${stored.ext}`,
       file_type: stored.mime,
       storage_path: storagePath,
       file_size: finalBuffer.byteLength,
       sha256,
-      page_no: (existingCount ?? 0) + 1,
+      page_no: side ? (side === "front" ? 1 : 2) : (existingCount ?? 0) + 1,
       scan_session_id: session.id,
       uploaded_by: session.created_by,
     })
@@ -346,76 +400,14 @@ export async function submitFormSignSignature(
   const signaturePng = Buffer.from(signatureBase64, "base64");
   const values = (session.field_values ?? {}) as Record<string, string>;
 
-  // Optional: same graceful-skip rule as the same-device path in
-  // src/app/dashboard/visits/form-actions.ts -- only drawn when both
-  // the template has a seal box and the hospital has uploaded a seal.
-  let seal: StampPlacement | undefined;
-  if (template.seal_page) {
-    const { data: hospitalProfile } = await supabase
-      .from("hospital_form_profile")
-      .select("seal_storage_path")
-      .eq("hospital_id", session.hospital_id)
-      .maybeSingle();
-    if (hospitalProfile?.seal_storage_path) {
-      const { data: sealFile } = await supabase.storage
-        .from("documents")
-        .download(hospitalProfile.seal_storage_path);
-      if (sealFile) {
-        seal = {
-          pageNumber: template.seal_page,
-          x: template.seal_x!,
-          y: template.seal_y!,
-          width: template.seal_width!,
-          height: template.seal_height!,
-          image: Buffer.from(await sealFile.arrayBuffer()),
-        };
-      }
-    }
-  }
-
-  // Same graceful-skip rule, for the visit's assigned doctor's own
-  // saved signature image instead of the hospital's seal.
-  let doctorSignature: StampPlacement | undefined;
-  if (template.doctor_signature_page && session.visit_id) {
-    const { data: visit } = await supabase
-      .from("visits")
-      .select("doctor_id")
-      .eq("id", session.visit_id)
-      .maybeSingle();
-    if (visit?.doctor_id) {
-      const { data: doctor } = await supabase
-        .from("doctors")
-        .select("signature_storage_path")
-        .eq("id", visit.doctor_id)
-        .maybeSingle();
-      if (doctor?.signature_storage_path) {
-        const { data: signatureFile } = await supabase.storage
-          .from("documents")
-          .download(doctor.signature_storage_path);
-        if (signatureFile) {
-          doctorSignature = {
-            pageNumber: template.doctor_signature_page,
-            x: template.doctor_signature_x!,
-            y: template.doctor_signature_y!,
-            width: template.doctor_signature_width!,
-            height: template.doctor_signature_height!,
-            image: Buffer.from(await signatureFile.arrayBuffer()),
-          };
-        }
-      }
-    }
-  }
+  const parts = await buildFlattenParts(supabase, template, values, {
+    hospitalId: session.hospital_id,
+    visitId: session.visit_id,
+  });
 
   const flattened = await flattenFormTemplate({
     blankPdf,
-    fields: (template.form_template_fields ?? []).map((f) => ({
-      pageNumber: f.page_number,
-      x: f.x,
-      y: f.y,
-      fontSize: f.font_size,
-      multiline: f.input_type === "textarea",
-      value: values[f.field_key] ?? "",
-    })),
+    fields: parts.fields,
     signature: {
       pageNumber: template.signature_page,
       x: template.signature_x,
@@ -424,8 +416,8 @@ export async function submitFormSignSignature(
       height: template.signature_height,
       signaturePng,
     },
-    seal,
-    doctorSignature,
+    seals: parts.seals,
+    doctorSignatures: parts.doctorSignatures,
   });
 
   const sha256 = createHash("sha256").update(flattened).digest("hex");
@@ -539,6 +531,14 @@ export async function finishScanSession(rawToken: string): Promise<{ error?: str
   const session = await resolveScanSession(supabase, rawToken);
   if (!session) {
     return { error: "This scan session is no longer active." };
+  }
+
+  // A two-sided ID (front/back sent separately) becomes one document first;
+  // the session is only marked finished once that succeeded, so a failed
+  // merge can simply be retried with Finish.
+  if (session.document_type_id) {
+    const merged = await finalizeIdSides(supabase, session);
+    if (merged.error) return merged;
   }
 
   const { error } = await supabase

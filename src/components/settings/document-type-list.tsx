@@ -12,6 +12,7 @@ export interface DocumentTypeRow {
   sensitive: boolean;
   pc_pndt_form: boolean;
   requires_signature: boolean;
+  two_sided: boolean;
   version: number;
   effective_from: string;
   active: boolean;
@@ -42,6 +43,7 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                   sensitive: dt.sensitive,
                   pcPndtForm: dt.pc_pndt_form,
                   requiresSignature: dt.requires_signature,
+                  twoSided: dt.two_sided,
                   active: dt.active,
                 }}
                 onSaved={() => setEditingId(null)}
@@ -61,6 +63,11 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                   {dt.requires_signature ? (
                     <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                       Signature required
+                    </span>
+                  ) : null}
+                  {dt.two_sided ? (
+                    <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      Front + back
                     </span>
                   ) : null}
                 </p>
@@ -125,6 +132,7 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                       sensitive: dt.sensitive,
                       pcPndtForm: dt.pc_pndt_form,
                       requiresSignature: dt.requires_signature,
+                      twoSided: dt.two_sided,
                       active: dt.active,
                     }}
                     onSaved={() => setEditingId(null)}
@@ -144,6 +152,11 @@ export function DocumentTypeList({ documentTypes }: { documentTypes: DocumentTyp
                   {dt.requires_signature ? (
                     <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                       Signature required
+                    </span>
+                  ) : null}
+                  {dt.two_sided ? (
+                    <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      Front + back
                     </span>
                   ) : null}
                 </td>

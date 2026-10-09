@@ -8,50 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
 import { MAX_FORM_TEMPLATE_BYTES, validateFile } from "@/lib/documents/file-validation";
 import { readPdfPageSize } from "@/lib/documents/form-flatten";
-import type { FormFieldInputType } from "@/types/database";
+import { parseFormLayout } from "@/lib/documents/form-layout";
 
 const SETTINGS_PATH = "/dashboard/settings/forms";
-
-export interface FormTemplateFieldInput {
-  fieldKey: string;
-  label: string;
-  inputType: FormFieldInputType;
-  pageNumber: number;
-  x: number;
-  y: number;
-  fontSize: number;
-  displayOrder: number;
-}
-
-export interface SignatureBoxInput {
-  pageNumber: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-/** No image here, unlike SignatureBoxInput's conceptual twin -- the
- * seal image itself lives on the hospital (hospital_form_profile),
- * not the template; this is only ever the placement. */
-export interface SealBoxInput {
-  pageNumber: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-/** Same idea as SealBoxInput, for the doctor's own saved signature
- * image (lives on `doctors.signature_storage_path`) instead of the
- * hospital's seal. */
-export interface DoctorSignatureBoxInput {
-  pageNumber: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 export interface FormTemplateFormState {
   error?: string;
@@ -95,25 +54,17 @@ export async function createFormTemplate(
     };
   }
 
-  let fields: FormTemplateFieldInput[];
-  let signature: SignatureBoxInput;
-  let seal: SealBoxInput | null;
-  let doctorSignature: DoctorSignatureBoxInput | null;
+  let layoutJson: unknown;
   try {
-    const layout = JSON.parse(String(formData.get("layout") ?? "{}"));
-    fields = layout.fields;
-    signature = layout.signature;
-    seal = layout.seal ?? null;
-    doctorSignature = layout.doctorSignature ?? null;
-    if (!Array.isArray(fields) || fields.length === 0) {
-      return { error: "Place at least one field on the form." };
-    }
-    if (!signature) {
-      return { error: "Place the signature box on the form." };
-    }
+    layoutJson = JSON.parse(String(formData.get("layout") ?? "{}"));
   } catch {
     return { error: "Could not read the field layout. Try again." };
   }
+  const parsed = parseFormLayout(layoutJson);
+  if ("error" in parsed) {
+    return { error: parsed.error };
+  }
+  const { fields, signature, seal, doctorSignature, extraStamps } = parsed.layout;
 
   const { pageWidth, pageHeight } = await readPdfPageSize(rawBuffer);
   const storagePath = `${profile.hospitalId}/form-templates/${randomUUID()}.pdf`;
@@ -161,6 +112,7 @@ export async function createFormTemplate(
       doctor_signature_y: doctorSignature?.y ?? null,
       doctor_signature_width: doctorSignature?.width ?? null,
       doctor_signature_height: doctorSignature?.height ?? null,
+      extra_stamps: extraStamps,
     })
     .select("id")
     .single();
@@ -176,6 +128,8 @@ export async function createFormTemplate(
       field_key: f.fieldKey,
       label: f.label,
       input_type: f.inputType,
+      checklist_key: f.checklistKey ?? null,
+      tick_marks: f.tickMarks ?? [],
       page_number: f.pageNumber,
       x: f.x,
       y: f.y,
@@ -255,25 +209,17 @@ export async function updateFormTemplateFields(
 ): Promise<FormTemplateFormState> {
   requireActiveTenant(requireRole(await getSessionProfile(), ["HOSPITAL_ADMIN"]));
 
-  let fields: FormTemplateFieldInput[];
-  let signature: SignatureBoxInput;
-  let seal: SealBoxInput | null;
-  let doctorSignature: DoctorSignatureBoxInput | null;
+  let layoutJson: unknown;
   try {
-    const layout = JSON.parse(String(formData.get("layout") ?? "{}"));
-    fields = layout.fields;
-    signature = layout.signature;
-    seal = layout.seal ?? null;
-    doctorSignature = layout.doctorSignature ?? null;
-    if (!Array.isArray(fields) || fields.length === 0) {
-      return { error: "Place at least one field on the form." };
-    }
-    if (!signature) {
-      return { error: "Place the signature box on the form." };
-    }
+    layoutJson = JSON.parse(String(formData.get("layout") ?? "{}"));
   } catch {
     return { error: "Could not read the field layout. Try again." };
   }
+  const parsed = parseFormLayout(layoutJson);
+  if ("error" in parsed) {
+    return { error: parsed.error };
+  }
+  const { fields, signature, seal, doctorSignature, extraStamps } = parsed.layout;
 
   const supabase = await createClient();
 
@@ -295,6 +241,7 @@ export async function updateFormTemplateFields(
       doctor_signature_y: doctorSignature?.y ?? null,
       doctor_signature_width: doctorSignature?.width ?? null,
       doctor_signature_height: doctorSignature?.height ?? null,
+      extra_stamps: extraStamps,
     })
     .eq("id", formTemplateId);
   if (updateError) {
@@ -315,6 +262,8 @@ export async function updateFormTemplateFields(
       field_key: f.fieldKey,
       label: f.label,
       input_type: f.inputType,
+      checklist_key: f.checklistKey ?? null,
+      tick_marks: f.tickMarks ?? [],
       page_number: f.pageNumber,
       x: f.x,
       y: f.y,

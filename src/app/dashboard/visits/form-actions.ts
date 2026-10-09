@@ -6,7 +6,8 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole, requireActiveTenant } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit/log";
-import { flattenFormTemplate, type StampPlacement } from "@/lib/documents/form-flatten";
+import { flattenFormTemplate } from "@/lib/documents/form-flatten";
+import { buildFlattenParts } from "@/lib/documents/form-render";
 
 const SIGNED_URL_TTL_SECONDS = 60;
 
@@ -78,75 +79,14 @@ export async function submitFilledForm(
   const blankPdf = Buffer.from(await blankFile.arrayBuffer());
   const signaturePng = Buffer.from(signatureBase64, "base64");
 
-  // Optional: only drawn when both this template has a seal box
-  // placed AND the hospital has actually uploaded a seal image --
-  // graceful skip otherwise, same as any other unset auto-fill source.
-  let seal: StampPlacement | undefined;
-  if (template.seal_page) {
-    const { data: hospitalProfile } = await supabase
-      .from("hospital_form_profile")
-      .select("seal_storage_path")
-      .maybeSingle();
-    if (hospitalProfile?.seal_storage_path) {
-      const { data: sealFile } = await supabase.storage
-        .from("documents")
-        .download(hospitalProfile.seal_storage_path);
-      if (sealFile) {
-        seal = {
-          pageNumber: template.seal_page,
-          x: template.seal_x!,
-          y: template.seal_y!,
-          width: template.seal_width!,
-          height: template.seal_height!,
-          image: Buffer.from(await sealFile.arrayBuffer()),
-        };
-      }
-    }
-  }
-
-  // Same graceful-skip rule, for the visit's assigned doctor's own
-  // saved signature image instead of the hospital's seal.
-  let doctorSignature: StampPlacement | undefined;
-  if (template.doctor_signature_page && target.visitId) {
-    const { data: visit } = await supabase
-      .from("visits")
-      .select("doctor_id")
-      .eq("id", target.visitId)
-      .maybeSingle();
-    if (visit?.doctor_id) {
-      const { data: doctor } = await supabase
-        .from("doctors")
-        .select("signature_storage_path")
-        .eq("id", visit.doctor_id)
-        .maybeSingle();
-      if (doctor?.signature_storage_path) {
-        const { data: signatureFile } = await supabase.storage
-          .from("documents")
-          .download(doctor.signature_storage_path);
-        if (signatureFile) {
-          doctorSignature = {
-            pageNumber: template.doctor_signature_page,
-            x: template.doctor_signature_x!,
-            y: template.doctor_signature_y!,
-            width: template.doctor_signature_width!,
-            height: template.doctor_signature_height!,
-            image: Buffer.from(await signatureFile.arrayBuffer()),
-          };
-        }
-      }
-    }
-  }
+  const parts = await buildFlattenParts(supabase, template, fieldValues, {
+    hospitalId: profile.hospitalId!,
+    visitId: target.visitId,
+  });
 
   const flattened = await flattenFormTemplate({
     blankPdf,
-    fields: (template.form_template_fields ?? []).map((f) => ({
-      pageNumber: f.page_number,
-      x: f.x,
-      y: f.y,
-      fontSize: f.font_size,
-      multiline: f.input_type === "textarea",
-      value: fieldValues[f.field_key] ?? "",
-    })),
+    fields: parts.fields,
     signature: {
       pageNumber: template.signature_page,
       x: template.signature_x,
@@ -155,8 +95,8 @@ export async function submitFilledForm(
       height: template.signature_height,
       signaturePng,
     },
-    seal,
-    doctorSignature,
+    seals: parts.seals,
+    doctorSignatures: parts.doctorSignatures,
   });
 
   const sha256 = createHash("sha256").update(flattened).digest("hex");

@@ -18,7 +18,9 @@ import {
   type PatientFieldSource,
   type HospitalFieldSource,
   type DoctorFieldSource,
+  type VisitFieldSource,
 } from "@/lib/documents/form-field-sources";
+import { formatChecklistValue, getChecklist, selectedCodes } from "@/lib/documents/checklists";
 
 const POLL_INTERVAL_MS = 2500;
 
@@ -39,6 +41,8 @@ export interface FormTemplateFieldOption {
   fieldKey: string;
   label: string;
   inputType: FormFieldInputType;
+  /** For a checklist field: which built-in list it offers. */
+  checklistKey?: string | null;
   displayOrder: number;
 }
 
@@ -56,6 +60,7 @@ export function FormFillPanel({
   patient,
   hospital,
   doctor,
+  visit = null,
   revalidate,
   pairedDevice,
   statusByTemplate = {},
@@ -68,6 +73,8 @@ export function FormFillPanel({
   patient: PatientFieldSource;
   hospital: HospitalFieldSource;
   doctor: DoctorFieldSource;
+  /** The visit being filled for -- source of the procedure date, type, referrer, LMP. */
+  visit?: VisitFieldSource | null;
   revalidate: string;
   pairedDevice: PairedDeviceInfo | null;
   statusByTemplate?: Record<string, FormStatus>;
@@ -135,7 +142,7 @@ export function FormFillPanel({
       Object.fromEntries(
         templateFields.map((f) => [
           f.fieldKey,
-          resolveKnownFieldValue(f.fieldKey, { patient, hospital, doctor }) ?? "",
+          resolveKnownFieldValue(f.fieldKey, { patient, hospital, doctor, visit }) ?? "",
         ]),
       ),
     );
@@ -235,7 +242,31 @@ export function FormFillPanel({
                       <label htmlFor={`field-${f.fieldKey}`} className="text-sm font-medium">
                         {f.label}
                       </label>
-                      {f.inputType === "textarea" ? (
+                      {f.inputType === "tick" ? (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            id={`field-${f.fieldKey}`}
+                            type="checkbox"
+                            checked={isTicked(values[f.fieldKey] ?? "")}
+                            onChange={(e) =>
+                              setValues((prev) => ({
+                                ...prev,
+                                [f.fieldKey]: e.target.checked ? "1" : "",
+                              }))
+                            }
+                          />
+                          Tick
+                        </label>
+                      ) : f.inputType === "checklist" ? (
+                        <ChecklistInput
+                          id={`field-${f.fieldKey}`}
+                          checklistKey={f.checklistKey ?? null}
+                          value={values[f.fieldKey] ?? ""}
+                          onChange={(next) =>
+                            setValues((prev) => ({ ...prev, [f.fieldKey]: next }))
+                          }
+                        />
+                      ) : f.inputType === "textarea" ? (
                         <textarea
                           id={`field-${f.fieldKey}`}
                           value={values[f.fieldKey] ?? ""}
@@ -275,7 +306,7 @@ export function FormFillPanel({
                   {fields.map((f) => (
                     <span key={f.fieldKey} className="contents">
                       <dt className="text-zinc-500 dark:text-zinc-400">{f.label}</dt>
-                      <dd>{values[f.fieldKey] || "—"}</dd>
+                      <dd>{reviewText(f, values[f.fieldKey] ?? "")}</dd>
                     </span>
                   ))}
                 </dl>
@@ -480,5 +511,74 @@ function FormItem({
         {status.signed ? "Fill again" : "Fill & sign"}
       </button>
     </li>
+  );
+}
+
+function isTicked(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return v !== "" && v !== "0" && v !== "false" && v !== "no";
+}
+
+/** How a field's value reads on the "review before signing" screen. */
+function reviewText(field: FormTemplateFieldOption, value: string): string {
+  if (field.inputType === "tick") return isTicked(value) ? "Ticked" : "—";
+  if (field.inputType === "checklist") {
+    const list = getChecklist(field.checklistKey);
+    return (list ? formatChecklistValue(value, list) : value) || "—";
+  }
+  return value || "—";
+}
+
+/** A pick-list shown as checkboxes: the chosen codes are stored as "ii,xvii". */
+function ChecklistInput({
+  id,
+  checklistKey,
+  value,
+  onChange,
+}: {
+  id: string;
+  checklistKey: string | null;
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const list = getChecklist(checklistKey);
+  if (!list) {
+    return <p className="text-sm text-red-600">This field&rsquo;s list is missing.</p>;
+  }
+  const chosen = new Set(selectedCodes(value, list));
+  const toggle = (code: string, on: boolean) => {
+    const next = new Set(chosen);
+    if (on) next.add(code);
+    else next.delete(code);
+    onChange(
+      list.items
+        .map((i) => i.code)
+        .filter((c) => next.has(c))
+        .join(","),
+    );
+  };
+  return (
+    <details className="rounded-md border border-slate-300 bg-white" open={chosen.size > 0}>
+      <summary className="cursor-pointer px-3 py-2 text-sm select-none">
+        {chosen.size > 0 ? `Selected: ${formatChecklistValue(value, list)}` : "Choose…"}
+      </summary>
+      <ul id={id} className="flex flex-col gap-1.5 border-t border-slate-200 px-3 py-2 text-sm">
+        {list.items.map((item) => (
+          <li key={item.code}>
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={chosen.has(item.code)}
+                onChange={(e) => toggle(item.code, e.target.checked)}
+              />
+              <span>
+                <span className="font-medium">{item.code}.</span> {item.label}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

@@ -30,25 +30,25 @@ test("upload a patient-level document, view it, and see it fulfil a visit requir
 
   // Patient-level "ID Proof" upload.
   await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
-  await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
+  await page.locator('input[type="file"]#front').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
 
   // The document list renders a mobile card (first in the DOM, hidden
   // via CSS at this test's desktop viewport) and a desktop table row
   // for the same document -- .last() lands on the visible one.
-  await expect(page.getByText("id-proof.jpg").last()).toBeVisible();
+  await expect(page.getByText("ID Proof (front).jpg").last()).toBeVisible();
   await expect(page.getByText("Sensitive").last()).toBeVisible();
 
   // Uploading the exact same file again in the same slot stores nothing
   // new -- it says so instead.
   await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
-  await page.locator('input[type="file"]#file').setInputFiles(ID_PROOF_JPEG);
+  await page.locator('input[type="file"]#front').setInputFiles(ID_PROOF_JPEG);
   await page.getByRole("button", { name: "Upload" }).click();
   await expect(page.getByText("already attached here")).toBeVisible();
-  expect(await countDocuments(patientId, "id-proof.jpg")).toBe(1);
+  expect(await countDocuments(patientId, "ID Proof (front).jpg")).toBe(1);
 
   // Viewing a sensitive document logs exactly one audit_logs row.
-  const documentId = await findDocumentId(patientId, "id-proof.jpg");
+  const documentId = await findDocumentId(patientId, "ID Proof (front).jpg");
 
   const [viewTab] = await Promise.all([
     page.waitForEvent("popup"),
@@ -95,11 +95,45 @@ test("rejects a disallowed file type with a clear error", async ({ page }) => {
   await createPatientViaUi(page, { name });
 
   await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
-  await page.locator('input[type="file"]#file').setInputFiles(NOT_AN_IMAGE);
+  await page.locator('input[type="file"]#front').setInputFiles(NOT_AN_IMAGE);
   await page.getByRole("button", { name: "Upload" }).click();
 
   await expect(page.locator("p[role=alert]")).toHaveText(
-    "Only JPEG, PNG, or PDF files are accepted.",
+    "Front: Only JPEG, PNG, or PDF files are accepted.",
   );
   await expect(page.getByText("No documents uploaded yet.")).toBeVisible();
+});
+
+test("an ID's front and back become one merged document, and the guardian's ID is its own slot", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(RECEPTIONIST_EMAIL);
+  await page.getByLabel("Password").fill(DEMO_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  const name = `E2E Document Test Patient ${Date.now()}`;
+  await createPatientViaUi(page, { name });
+  const patientId = page.url().match(/\/dashboard\/patients\/([0-9a-f-]+)$/)![1];
+
+  // Both sides in one go: one document, named for both.
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
+  await page.locator('input[type="file"]#front').setInputFiles(ID_PROOF_JPEG);
+  await page.locator('input[type="file"]#back').setInputFiles(ID_PROOF_JPEG);
+  await page.getByRole("button", { name: "Upload" }).click();
+  await expect(page.getByText("ID Proof (front + back).jpg").last()).toBeVisible();
+  expect(await countDocuments(patientId, "ID Proof (front + back).jpg")).toBe(1);
+
+  // The guardian / husband / relative has a separate ID slot; one side is fine.
+  await page.getByLabel("Document type").selectOption({ label: "Guardian / Relative ID Proof" });
+  await page.locator('input[type="file"]#back').setInputFiles(ID_PROOF_JPEG);
+  await page.getByRole("button", { name: "Upload" }).click();
+  await expect(page.getByText("Guardian - Relative ID Proof (back).jpg").last()).toBeVisible();
+  expect(await countDocuments(patientId, "Guardian - Relative ID Proof (back).jpg")).toBe(1);
+
+  // Nothing selected is refused, not silently stored.
+  await page.getByLabel("Document type").selectOption({ label: "ID Proof" });
+  await page.getByRole("button", { name: "Upload" }).click();
+  await expect(page.locator("p[role=alert]")).toHaveText("Add the front, the back, or both.");
 });

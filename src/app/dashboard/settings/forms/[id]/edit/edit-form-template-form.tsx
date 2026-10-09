@@ -6,11 +6,14 @@ import { useRouter } from "next/navigation";
 import {
   updateFormTemplateFields,
   type FormTemplateFormState,
-  type FormTemplateFieldInput,
-  type SignatureBoxInput,
-  type SealBoxInput,
-  type DoctorSignatureBoxInput,
 } from "@/app/dashboard/settings/forms/actions";
+import type {
+  FormTemplateFieldInput,
+  SignatureBoxInput,
+  SealBoxInput,
+  DoctorSignatureBoxInput,
+} from "@/lib/documents/form-layout";
+import type { ExtraStamp } from "@/types/database";
 import {
   FormTemplateDesigner,
   type FormLayout,
@@ -40,6 +43,7 @@ export function EditFormTemplateForm({
   initialSignature,
   initialSeal,
   initialDoctorSignature,
+  initialExtraStamps,
 }: {
   templateId: string;
   pdfUrl: string;
@@ -47,6 +51,7 @@ export function EditFormTemplateForm({
   initialSignature: SignatureBoxInput;
   initialSeal: SealBoxInput | null;
   initialDoctorSignature: DoctorSignatureBoxInput | null;
+  initialExtraStamps: ExtraStamp[];
 }) {
   const [state, formAction] = useActionState(
     updateFormTemplateFields.bind(null, templateId),
@@ -57,6 +62,7 @@ export function EditFormTemplateForm({
     signature: initialSignature,
     seal: initialSeal,
     doctorSignature: initialDoctorSignature,
+    extraStamps: initialExtraStamps,
   });
   const router = useRouter();
 
@@ -79,6 +85,7 @@ export function EditFormTemplateForm({
           initialSignature={initialSignature}
           initialSeal={initialSeal}
           initialDoctorSignature={initialDoctorSignature}
+          initialExtraStamps={initialExtraStamps}
         />
       </div>
 

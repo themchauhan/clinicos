@@ -20,6 +20,8 @@ interface DocumentTypeOption {
   id: string;
   name: string;
   requires_signature: boolean;
+  /** Captured as front + back, stored as one merged image. */
+  two_sided: boolean;
 }
 
 function UploadSubmitButton({ disabled }: { disabled: boolean }) {
@@ -33,6 +35,24 @@ function UploadSubmitButton({ disabled }: { disabled: boolean }) {
       {pending ? <Spinner /> : null}
       {pending ? "Uploading…" : "Upload"}
     </button>
+  );
+}
+
+function SideInput({ id, label, required }: { id: string; label: string; required: boolean }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type="file"
+        accept="image/jpeg,image/png,application/pdf"
+        required={required}
+        className="text-sm file:mr-3 file:rounded-md file:border file:border-zinc-300 file:bg-transparent file:px-3 file:py-1.5 file:text-sm dark:file:border-zinc-700"
+      />
+    </div>
   );
 }
 
@@ -68,6 +88,7 @@ export function DocumentUploadPanel({
   const [scanError, setScanError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [sessionRequiresSignature, setSessionRequiresSignature] = useState(false);
+  const [sessionTwoSided, setSessionTwoSided] = useState(false);
   const lastPageCount = useRef(0);
 
   const deviceIsConnected = Boolean(pairedDevice?.confirmedAt);
@@ -111,6 +132,7 @@ export function DocumentUploadPanel({
     setPageCount(0);
     setDone(false);
     setSessionRequiresSignature(selectedType?.requires_signature ?? false);
+    setSessionTwoSided(selectedType?.two_sided ?? false);
     setSession(result);
   }
 
@@ -181,9 +203,13 @@ export function DocumentUploadPanel({
             <p className="text-zinc-500 dark:text-zinc-400">
               {sessionRequiresSignature
                 ? "Waiting for signature…"
-                : pageCount > 0
-                  ? `${pageCount} page${pageCount === 1 ? "" : "s"} uploaded so far…`
-                  : "Waiting for a page…"}
+                : sessionTwoSided
+                  ? pageCount > 0
+                    ? `${pageCount} side${pageCount === 1 ? "" : "s"} of the ID captured so far…`
+                    : "Waiting for the front of the ID…"
+                  : pageCount > 0
+                    ? `${pageCount} page${pageCount === 1 ? "" : "s"} uploaded so far…`
+                    : "Waiting for a page…"}
             </p>
             <button
               type="button"
@@ -198,19 +224,30 @@ export function DocumentUploadPanel({
         <div className="flex flex-wrap items-end gap-3">
           <form action={uploadFormAction} className="flex flex-wrap items-end gap-3">
             <input type="hidden" name="documentTypeId" value={documentTypeId} />
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="file" className="text-sm font-medium">
-                File (JPEG, PNG, or PDF)
-              </label>
-              <input
-                id="file"
-                name="file"
-                type="file"
-                accept="image/jpeg,image/png,application/pdf"
-                required
-                className="text-sm file:mr-3 file:rounded-md file:border file:border-zinc-300 file:bg-transparent file:px-3 file:py-1.5 file:text-sm dark:file:border-zinc-700"
-              />
-            </div>
+            {selectedType?.two_sided ? (
+              <>
+                <SideInput id="front" label="Front side" required={false} />
+                <SideInput id="back" label="Back side" required={false} />
+                <p className="basis-full text-xs text-zinc-500 dark:text-zinc-400">
+                  Add both sides (they are joined into one image) or just one. JPEG or PNG; a single
+                  PDF also works on its own.
+                </p>
+              </>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="file" className="text-sm font-medium">
+                  File (JPEG, PNG, or PDF)
+                </label>
+                <input
+                  id="file"
+                  name="file"
+                  type="file"
+                  accept="image/jpeg,image/png,application/pdf"
+                  required
+                  className="text-sm file:mr-3 file:rounded-md file:border file:border-zinc-300 file:bg-transparent file:px-3 file:py-1.5 file:text-sm dark:file:border-zinc-700"
+                />
+              </div>
+            )}
             <UploadSubmitButton disabled={!documentTypeId} />
           </form>
 
@@ -269,7 +306,9 @@ export function DocumentUploadPanel({
         <p className="text-sm text-emerald-700 dark:text-emerald-400">
           {sessionRequiresSignature
             ? "Signature captured."
-            : `Scan finished — ${pageCount} page${pageCount === 1 ? "" : "s"} added.`}
+            : sessionTwoSided
+              ? "Scan finished — the ID was saved as one image."
+              : `Scan finished — ${pageCount} page${pageCount === 1 ? "" : "s"} added.`}
         </p>
       ) : null}
     </div>

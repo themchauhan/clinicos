@@ -54,7 +54,7 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
       .order("token_number", { ascending: false }),
     supabase
       .from("document_types")
-      .select("id, name, requires_signature")
+      .select("id, name, requires_signature, two_sided")
       .eq("scope", "PATIENT")
       .eq("active", true),
     supabase
@@ -112,6 +112,27 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
 
         <dt className="text-zinc-500 dark:text-zinc-400">Address</dt>
         <dd>{patient.address ?? "—"}</dd>
+
+        {patient.living_sons != null ||
+        patient.living_daughters != null ||
+        patient.living_sons_ages ||
+        patient.living_daughters_ages ? (
+          <>
+            <dt className="text-zinc-500 dark:text-zinc-400">Children</dt>
+            <dd>
+              {[
+                patient.living_sons != null || patient.living_sons_ages
+                  ? `Sons: ${patient.living_sons ?? "—"}${patient.living_sons_ages ? ` (${patient.living_sons_ages})` : ""}`
+                  : null,
+                patient.living_daughters != null || patient.living_daughters_ages
+                  ? `Daughters: ${patient.living_daughters ?? "—"}${patient.living_daughters_ages ? ` (${patient.living_daughters_ages})` : ""}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </dd>
+          </>
+        ) : null}
       </dl>
 
       <div className="mt-12 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -206,6 +227,16 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
         <h2 className="text-lg font-semibold">Documents</h2>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Patient-level documents (e.g. ID proof) — captured once, reused on every visit.
+          {patient.guardian_name ? (
+            <>
+              {" "}
+              Use &ldquo;Guardian / Relative ID Proof&rdquo; for{" "}
+              <span className="font-medium">
+                {formatGuardian(patient.guardian_relation, patient.guardian_name)}
+              </span>
+              &rsquo;s ID.
+            </>
+          ) : null}
         </p>
 
         <div className="mt-4">

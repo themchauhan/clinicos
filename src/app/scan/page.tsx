@@ -18,6 +18,8 @@ interface Page {
   id: string;
   pageNo: number;
   previewUrl?: string;
+  /** Set for a two-sided ID: which side this page is. */
+  side?: "front" | "back" | null;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -34,6 +36,8 @@ export default function ScanPage() {
   const [finished, setFinished] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "Only the back side": lets the phone start with the back instead of the front.
+  const [forcedSide, setForcedSide] = useState<"front" | "back" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -50,7 +54,7 @@ export default function ScanPage() {
       if (cancelled) return;
       setInfo(result);
       if (!("error" in result) && result.kind === "document") {
-        setPages(result.existingPages.map((p) => ({ id: p.id, pageNo: p.pageNo })));
+        setPages(result.existingPages.map((p) => ({ id: p.id, pageNo: p.pageNo, side: p.side })));
       }
     }
 
@@ -67,12 +71,27 @@ export default function ScanPage() {
     e.target.value = "";
   }
 
+  // Two-sided IDs: the front, then the back; either can be skipped.
+  const twoSided = Boolean(info && !("error" in info) && info.kind === "document" && info.twoSided);
+  const haveFront = pages.some((p) => p.side === "front");
+  const haveBack = pages.some((p) => p.side === "back");
+  const nextSide: "front" | "back" | null = !twoSided
+    ? null
+    : forcedSide === "back" && !haveBack
+      ? "back"
+      : !haveFront
+        ? "front"
+        : !haveBack
+          ? "back"
+          : null;
+
   async function handleConfirm() {
     if (!preview || !token) return;
     setBusy(true);
     setError(null);
     const formData = new FormData();
     formData.set("file", preview.file);
+    if (twoSided && nextSide) formData.set("side", nextSide);
     const result = await submitScanPage(token, formData);
     setBusy(false);
     if (result.error || !result.documentId) {
@@ -81,8 +100,14 @@ export default function ScanPage() {
     }
     setPages((prev) => [
       ...prev,
-      { id: result.documentId!, pageNo: prev.length + 1, previewUrl: preview.url },
+      {
+        id: result.documentId!,
+        pageNo: prev.length + 1,
+        previewUrl: preview.url,
+        side: twoSided ? nextSide : null,
+      },
     ]);
+    setForcedSide(null);
     setPreview(null);
   }
 
@@ -172,7 +197,9 @@ export default function ScanPage() {
         ? `Signature captured for ${info.patientName} (${info.formTemplateName}).`
         : info.requiresSignature
           ? `Signature captured for ${info.patientName} (${info.documentTypeName}).`
-          : `${pages.length} page${pages.length === 1 ? "" : "s"} uploaded for ${info.patientName} (${info.documentTypeName}).`;
+          : twoSided
+            ? `${info.documentTypeName} saved for ${info.patientName}.`
+            : `${pages.length} page${pages.length === 1 ? "" : "s"} uploaded for ${info.patientName} (${info.documentTypeName}).`;
     return (
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-16 sm:px-6">
         <h1 className="text-2xl font-semibold tracking-tight">Done</h1>
@@ -253,6 +280,12 @@ export default function ScanPage() {
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
         {info.patientName} — {info.hospitalName}
       </p>
+      {twoSided ? (
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Photograph the <strong>front</strong>, then the <strong>back</strong>. They are joined
+          into one image. You can skip either side.
+        </p>
+      ) : null}
 
       {pages.length > 0 ? (
         <ul className="mt-6 flex flex-col gap-3">
@@ -273,25 +306,31 @@ export default function ScanPage() {
                   Page {page.pageNo}
                 </span>
               )}
-              <span className="flex-1">Page {i + 1}</span>
-              <button
-                type="button"
-                disabled={busy || i === 0}
-                onClick={() => handleReorder(page.id, "up")}
-                className="disabled:opacity-30"
-                aria-label="Move up"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                disabled={busy || i === pages.length - 1}
-                onClick={() => handleReorder(page.id, "down")}
-                className="disabled:opacity-30"
-                aria-label="Move down"
-              >
-                ↓
-              </button>
+              <span className="flex-1">
+                {twoSided ? (page.side === "front" ? "Front" : "Back") : `Page ${i + 1}`}
+              </span>
+              {twoSided ? null : (
+                <>
+                  <button
+                    type="button"
+                    disabled={busy || i === 0}
+                    onClick={() => handleReorder(page.id, "up")}
+                    className="disabled:opacity-30"
+                    aria-label="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || i === pages.length - 1}
+                    onClick={() => handleReorder(page.id, "down")}
+                    className="disabled:opacity-30"
+                    aria-label="Move down"
+                  >
+                    ↓
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 disabled={busy}
@@ -336,18 +375,47 @@ export default function ScanPage() {
               </button>
             </div>
           </div>
+        ) : twoSided && nextSide === null ? (
+          <p className="text-sm text-emerald-700 dark:text-emerald-400">
+            Both sides captured. Tap Finish.
+          </p>
         ) : (
-          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700">
-            {pages.length > 0 ? "Add another page" : "Take a photo"}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileSelected}
-              className="hidden"
-            />
-          </label>
+          <div className="flex flex-col items-start gap-3">
+            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700">
+              {twoSided
+                ? `Take a photo of the ${nextSide}`
+                : pages.length > 0
+                  ? "Add another page"
+                  : "Take a photo"}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileSelected}
+                className="hidden"
+              />
+            </label>
+            {twoSided && !haveFront && !haveBack && nextSide === "front" ? (
+              <button
+                type="button"
+                onClick={() => setForcedSide("back")}
+                className="text-sm text-teal-700 underline"
+              >
+                I only have the back side
+              </button>
+            ) : null}
+            {twoSided && (haveFront || haveBack) && !haveBack === haveFront ? (
+              <button
+                type="button"
+                onClick={handleFinish}
+                disabled={busy}
+                className="text-sm text-teal-700 underline"
+              >
+                {haveFront ? "Skip the back — front only" : "Skip the front — back only"}
+              </button>
+            ) : null}
+          </div>
         )}
       </div>
 
