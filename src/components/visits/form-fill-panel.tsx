@@ -382,7 +382,7 @@ export function FormFillPanel({
                       disabled={remoteStarting}
                       className="underline hover:text-zinc-700 disabled:opacity-60"
                     >
-                      {remoteStarting ? "Starting…" : "Send to patient's phone instead"}
+                      {remoteStarting ? "Starting…" : "Sign on the clinic's device instead"}
                     </button>
                     {deviceIsConnected ? (
                       <>
