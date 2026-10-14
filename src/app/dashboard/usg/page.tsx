@@ -37,7 +37,12 @@ export default async function UsgDashboardPage() {
 
   const today = todayInAppTimezone();
 
-  const [{ data: visits }, { data: payments }] = await Promise.all([
+  // Today's payments, bounded by the India-time day (the same boundary as
+  // the visit date), not UTC.
+  const tomorrow = new Date(`${today}T00:00:00+05:30`);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+  const [{ data: visits }, { data: payments }, { data: pendingRows }] = await Promise.all([
     supabase
       .from("visits")
       .select(
@@ -45,19 +50,19 @@ export default async function UsgDashboardPage() {
       )
       .eq("visit_date", today)
       .eq("visit_types.module", "USG")
-      .order("token_number"),
+      .order("token_number")
+      .limit(1000),
     supabase
       .from("visit_payments")
       .select("amount, mode, is_reversal, received_by, profiles(name)")
-      .gte("received_at", `${today}T00:00:00`)
-      .lt("received_at", `${today}T23:59:59.999`),
+      .gte("received_at", `${today}T00:00:00+05:30`)
+      .lt("received_at", tomorrow.toISOString())
+      .limit(5000),
+    // By date, not by listing today's visit ids in the URL (which breaks at
+    // a couple of hundred visits a day).
+    supabase.from("pending_visit_requirements").select("visit_id").eq("visit_date", today),
   ]);
 
-  const visitIds = (visits ?? []).map((v) => v.id);
-  const { data: pendingRows } = await supabase
-    .from("pending_visit_requirements")
-    .select("visit_id")
-    .in("visit_id", visitIds);
   const visitsWithPending = new Set((pendingRows ?? []).map((r) => r.visit_id));
 
   const columns: Record<Column, typeof visits> = {

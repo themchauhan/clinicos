@@ -19,6 +19,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ClinicOS",
   description: "Digital patient records for small hospitals and USG centres.",
+  // Private app (login, dashboards, patient data): keep every page out of
+  // search results. The public product page lives on themanishchauhan.in/clinicos.
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
+  },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

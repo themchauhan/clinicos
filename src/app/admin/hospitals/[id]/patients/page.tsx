@@ -43,7 +43,9 @@ export default async function HospitalPatientsPage({
       .from("patients")
       .select("id, name, patient_code, created_at")
       .eq("hospital_id", id)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      // Newest first and capped: a real centre can have millions of patients.
+      .limit(200),
   ]);
 
   if (!hospital) {

@@ -7,6 +7,8 @@ import { resolvePairedDevice } from "@/lib/devices/resolve-device";
 // duplicated.
 import { generateScanToken, hashScanToken } from "@/lib/scan/token";
 
+const HEARTBEAT_WRITE_MS = 30_000;
+
 // Nothing in this file trusts a Supabase Auth session — there isn't
 // one, same as src/app/scan/actions.ts. The raw device token is the
 // only credential.
@@ -64,10 +66,15 @@ export async function getAssignedScanSession(rawToken: string): Promise<Assigned
     return { error: "This device is no longer connected." };
   }
 
-  await supabase
-    .from("paired_devices")
-    .update({ last_seen_at: new Date().toISOString() })
-    .eq("id", device.id);
+  // The device polls every few seconds; the timestamp is only shown as
+  // "last seen", so write it at most every 30s rather than on every poll.
+  const lastSeen = device.last_seen_at ? new Date(device.last_seen_at).getTime() : 0;
+  if (Date.now() - lastSeen > HEARTBEAT_WRITE_MS) {
+    await supabase
+      .from("paired_devices")
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq("id", device.id);
+  }
 
   const { data: session } = await supabase
     .from("scan_sessions")

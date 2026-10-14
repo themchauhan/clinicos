@@ -51,7 +51,8 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
       )
       .eq("patient_id", patient.id)
       .order("visit_date", { ascending: false })
-      .order("token_number", { ascending: false }),
+      .order("token_number", { ascending: false })
+      .limit(100),
     supabase
       .from("document_types")
       .select("id, name, requires_signature, two_sided")

@@ -13,7 +13,7 @@ export default async function NewVisitPage({ params }: { params: Promise<{ id: s
   const [{ data: patient }, { data: visitTypes }, { data: doctors }] = await Promise.all([
     supabase
       .from("patients")
-      .select("id, name")
+      .select("id, name, gender")
       .eq("id", patientId)
       .is("deleted_at", null)
       .maybeSingle(),
@@ -43,6 +43,7 @@ export default async function NewVisitPage({ params }: { params: Promise<{ id: s
             module: vt.module,
           }))}
           doctors={doctors ?? []}
+          patientGender={patient.gender}
         />
       </div>
     </main>

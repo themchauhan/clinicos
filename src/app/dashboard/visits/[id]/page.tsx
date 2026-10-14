@@ -13,6 +13,7 @@ import { StatusTransitionButtons } from "@/components/visits/status-transition-b
 import { PrintSlipButton } from "@/components/visits/print-slip-button";
 import { FormFillPanel, type FormStatus } from "@/components/visits/form-fill-panel";
 import { LmpForm } from "@/components/visits/lmp-form";
+import { asksPregnancyDetails } from "@/lib/patients/gender";
 import { formatGestationalAge } from "@/lib/visits/gestational-age";
 import { BackLink } from "@/components/back-link";
 
@@ -88,9 +89,11 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
       .eq("visit_id", visit.id),
     supabase
       .from("documents")
-      .select("document_type_id, document_types(scope)")
+      .select("document_type_id, document_types!inner(scope)")
       .eq("patient_id", visit.patients!.id)
-      .is("deleted_at", null),
+      .eq("document_types.scope", "PATIENT")
+      .is("deleted_at", null)
+      .limit(500),
   ]);
   const pairedDevice = pairedDeviceRow
     ? {
@@ -189,7 +192,7 @@ export default async function VisitDetailPage({ params }: { params: Promise<{ id
         <dt className="text-zinc-500 dark:text-zinc-400">Follow-up</dt>
         <dd>{visit.follow_up_date ?? "—"}</dd>
 
-        {visit.visit_types!.module === "USG" ? (
+        {visit.visit_types!.module === "USG" && asksPregnancyDetails(visit.patients!.gender) ? (
           <>
             <dt className="pt-1 text-zinc-500 dark:text-zinc-400">LMP</dt>
             <dd className="flex flex-col gap-1">

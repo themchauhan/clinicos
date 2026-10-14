@@ -11,6 +11,9 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
   // The phone scan page needs its own camera; nothing else needs any of these.
   { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
+  // Keep the private app (pages, PDFs, API responses) out of search engines.
+  // Not blocked in robots.txt on purpose: crawlers must fetch a page to see noindex.
+  { key: "X-Robots-Tag", value: "noindex, nofollow" },
 ];
 
 const nextConfig: NextConfig = {

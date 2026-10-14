@@ -60,7 +60,6 @@ test("Form F: the ready-made layout saves, and the fill screen pre-fills childre
   const name = `E2E Form F Patient ${Date.now()}`;
   await page.goto("/dashboard/patients/new");
   await page.getByLabel("Name", { exact: true }).fill(name);
-  await page.getByText("Children (asked on PC-PNDT Form F)").click();
   await page.getByLabel("Living sons").fill("1");
   await page.getByLabel("Age of each son").fill("4 years");
   await page.getByLabel("Living daughters").fill("2");
@@ -68,7 +67,7 @@ test("Form F: the ready-made layout saves, and the fill screen pre-fills childre
   const duplicate = page.getByRole("button", {
     name: "This is a different person — create anyway",
   });
-  if (await duplicate.isVisible({ timeout: 3_000 }).catch(() => false)) await duplicate.click();
+  await duplicate.click({ timeout: 4_000 }).catch(() => {});
   await expect(page).toHaveURL(/\/dashboard\/patients\/[0-9a-f-]+$/, { timeout: 10_000 });
 
   await page.getByRole("link", { name: "New visit" }).click();
@@ -103,4 +102,46 @@ test("Form F: the ready-made layout saves, and the fill screen pre-fills childre
   await expect(page.getByLabel("Result of the procedure (not saved anywhere else)")).toHaveValue(
     "",
   );
+});
+
+test("a male patient is never asked about children or LMP, and the slip is a complete printable page", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(CLARITY_ADMIN_EMAIL);
+  await page.getByLabel("Password").fill(DEMO_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  const name = `E2E Form F Patient ${Date.now()}`;
+  await page.goto("/dashboard/patients/new");
+  await page.getByLabel("Name", { exact: true }).fill(name);
+  // Children are asked until the patient is recorded as male.
+  await expect(page.getByLabel("Living sons")).toBeVisible();
+  await page.getByText("Male", { exact: true }).click();
+  await expect(page.getByLabel("Living sons")).toBeHidden();
+  await page.getByRole("button", { name: "Create patient" }).click();
+  const duplicate = page.getByRole("button", {
+    name: "This is a different person — create anyway",
+  });
+  await duplicate.click({ timeout: 4_000 }).catch(() => {});
+  await expect(page).toHaveURL(/\/dashboard\/patients\/[0-9a-f-]+$/, { timeout: 10_000 });
+
+  await page.getByRole("link", { name: "New visit" }).click();
+  await page.getByLabel("Visit type").selectOption({ label: "Pregnancy/Obstetric USG" });
+  await expect(page.getByLabel("Fee amount (₹)")).toBeVisible();
+  await expect(page.getByLabel("Last menstrual period (LMP)")).toHaveCount(0);
+  await page.getByRole("button", { name: "Create visit" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/visits\/[0-9a-f-]+$/);
+  await expect(page.getByText("LMP", { exact: true })).toHaveCount(0);
+
+  // The slip is plain HTML with everything on it, so printing it can never
+  // catch a loading spinner.
+  const slip = await page.request.get(`${page.url()}/slip`);
+  expect(slip.status()).toBe(200);
+  expect(slip.headers()["content-type"]).toContain("text/html");
+  const html = await slip.text();
+  expect(html).toContain(name);
+  expect(html).toContain("Token #");
+  expect(html).not.toContain("animate-spin");
 });
