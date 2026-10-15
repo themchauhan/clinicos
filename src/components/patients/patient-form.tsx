@@ -93,156 +93,157 @@ export function PatientForm({
     <form
       ref={formRef}
       action={formAction}
-      className="flex max-w-2xl flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+      className="flex max-w-5xl flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
     >
       <input ref={confirmedInputRef} type="hidden" name="confirmed" defaultValue="false" />
 
-      <div key={fieldsKey} className="flex flex-col gap-6">
-        <Section title="Patient">
-          <div className="sm:col-span-3">
-            <Field
-              label="Name"
-              name="name"
-              required
-              autoFocus
-              defaultValue={effectiveDefaults?.name}
-            />
+      {/* Three across on a desktop (everything visible without scrolling),
+          two on a tablet, one on a phone. */}
+      <div key={fieldsKey} className="grid gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
+        <div className="sm:col-span-3 lg:col-span-5">
+          <Field
+            label="Name"
+            name="name"
+            required
+            autoFocus
+            defaultValue={effectiveDefaults?.name}
+          />
+        </div>
+        <div className="sm:col-span-3 lg:col-span-4">
+          <Field
+            label="Mobile"
+            name="mobile"
+            type="tel"
+            inputMode="tel"
+            pattern="\+?[0-9\s\-\(\)]{7,20}"
+            title="Enter a valid mobile number (digits only)"
+            placeholder="e.g. 9876543210"
+            defaultValue={effectiveDefaults?.mobile ?? undefined}
+          />
+        </div>
+        <fieldset className="flex flex-col gap-1.5 sm:col-span-6 lg:col-span-3">
+          <legend className="mb-1.5 text-sm font-medium">Gender</legend>
+          <div className="flex w-fit overflow-hidden rounded-md border border-slate-300">
+            {GENDER_CHOICES.map((choice) => (
+              <label
+                key={choice.value}
+                className="cursor-pointer border-r border-slate-300 px-4 py-2 text-sm transition-colors last:border-r-0 has-checked:bg-teal-600 has-checked:text-white has-focus-visible:ring-2 has-focus-visible:ring-teal-600"
+              >
+                <input
+                  type="radio"
+                  name="gender"
+                  value={choice.value}
+                  checked={gender === choice.value}
+                  onChange={() => setGender(choice.value)}
+                  className="sr-only"
+                />
+                {choice.label}
+              </label>
+            ))}
           </div>
-          <div className="sm:col-span-3">
-            <Field
-              label="Mobile"
-              name="mobile"
-              type="tel"
-              inputMode="tel"
-              pattern="\+?[0-9\s\-\(\)]{7,20}"
-              title="Enter a valid mobile number (digits only)"
-              placeholder="e.g. 9876543210"
-              defaultValue={effectiveDefaults?.mobile ?? undefined}
-            />
-          </div>
+        </fieldset>
 
-          <fieldset className="flex flex-col gap-1.5 sm:col-span-6">
-            <legend className="mb-1.5 text-sm font-medium">Gender</legend>
-            <div className="flex w-fit overflow-hidden rounded-md border border-slate-300">
-              {GENDER_CHOICES.map((choice) => (
-                <label
-                  key={choice.value}
-                  className="cursor-pointer border-r border-slate-300 px-4 py-2 text-sm transition-colors last:border-r-0 has-checked:bg-teal-600 has-checked:text-white has-focus-visible:ring-2 has-focus-visible:ring-teal-600"
-                >
-                  <input
-                    type="radio"
-                    name="gender"
-                    value={choice.value}
-                    checked={gender === choice.value}
-                    onChange={() => setGender(choice.value)}
-                    className="sr-only"
-                  />
-                  {choice.label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+        <div className="sm:col-span-3 lg:col-span-3">
+          <Field
+            label="Date of birth"
+            name="dob"
+            type="date"
+            value={dob}
+            onValueChange={setDob}
+            hint={dobAge ? `Age: ${dobAge}` : undefined}
+          />
+        </div>
+        <div className="sm:col-span-3 lg:col-span-3">
+          <Field
+            label="Approximate age (years) — only if DOB is unknown"
+            displayLabel="Approx. age (years)"
+            name="approximateAgeYears"
+            type="number"
+            min={0}
+            placeholder="If DOB unknown"
+            disabled={Boolean(dobAge)}
+            defaultValue={effectiveDefaults?.approximateAgeYears ?? undefined}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-2">
+          <label htmlFor="guardianRelation" className="text-sm font-medium">
+            Relationship
+          </label>
+          <select
+            id="guardianRelation"
+            name="guardianRelation"
+            defaultValue={effectiveDefaults?.guardianRelation ?? ""}
+            className={INPUT_CLASS}
+          >
+            <option value="">Not specified</option>
+            {GUARDIAN_RELATIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="sm:col-span-4 lg:col-span-4">
+          <Field
+            label="Guardian name"
+            name="guardianName"
+            placeholder="Printed on forms, e.g. W/O Anand"
+            defaultValue={effectiveDefaults?.guardianName ?? undefined}
+          />
+        </div>
 
-          <div className="sm:col-span-3">
-            <Field
-              label="Date of birth"
-              name="dob"
-              type="date"
-              value={dob}
-              onValueChange={setDob}
-              hint={dobAge ? `Age: ${dobAge}` : undefined}
-            />
-          </div>
-          <div className="sm:col-span-3">
-            <Field
-              label="Approximate age (years) — only if DOB is unknown"
-              displayLabel="Approx. age (years)"
-              name="approximateAgeYears"
-              type="number"
-              min={0}
-              placeholder="If DOB unknown"
-              disabled={Boolean(dobAge)}
-              defaultValue={effectiveDefaults?.approximateAgeYears ?? undefined}
-            />
-          </div>
-        </Section>
-
-        <Section title="Guardian & address">
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <label htmlFor="guardianRelation" className="text-sm font-medium">
-              Relationship
-            </label>
-            <select
-              id="guardianRelation"
-              name="guardianRelation"
-              defaultValue={effectiveDefaults?.guardianRelation ?? ""}
-              className={INPUT_CLASS}
-            >
-              <option value="">Not specified</option>
-              {GUARDIAN_RELATIONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="sm:col-span-4">
-            <Field
-              label="Guardian name"
-              name="guardianName"
-              placeholder="Printed on forms, e.g. W/O Anand"
-              defaultValue={effectiveDefaults?.guardianName ?? undefined}
-            />
-          </div>
-          <div className="sm:col-span-6">
-            <Field
-              label="Address"
-              name="address"
-              multiline
-              defaultValue={effectiveDefaults?.address ?? undefined}
-            />
-          </div>
-        </Section>
+        <div className="sm:col-span-6 lg:col-span-12">
+          <Field
+            label="Address"
+            name="address"
+            multiline
+            defaultValue={effectiveDefaults?.address ?? undefined}
+          />
+        </div>
 
         {/* Hidden, not removed, for a male patient: the fields stay in the
             form, so saving never wipes children recorded earlier. */}
-        <div hidden={!showChildren}>
-          <Section title="Children (asked on PC-PNDT Form F)">
-            <div className="sm:col-span-2">
-              <Field
-                label="Living sons"
-                name="livingSons"
-                type="number"
-                min={0}
-                defaultValue={effectiveDefaults?.livingSons ?? undefined}
-              />
-            </div>
-            <div className="sm:col-span-4">
-              <Field
-                label="Age of each son"
-                name="livingSonsAges"
-                placeholder="e.g. 6 years"
-                defaultValue={effectiveDefaults?.livingSonsAges ?? undefined}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <Field
-                label="Living daughters"
-                name="livingDaughters"
-                type="number"
-                min={0}
-                defaultValue={effectiveDefaults?.livingDaughters ?? undefined}
-              />
-            </div>
-            <div className="sm:col-span-4">
-              <Field
-                label="Age of each daughter"
-                name="livingDaughtersAges"
-                placeholder="e.g. 4 years, 8 months"
-                defaultValue={effectiveDefaults?.livingDaughtersAges ?? undefined}
-              />
-            </div>
-          </Section>
+        <div
+          hidden={!showChildren}
+          className="grid gap-x-4 gap-y-4 border-t border-slate-100 pt-4 sm:col-span-6 sm:grid-cols-6 lg:col-span-12 lg:grid-cols-12"
+        >
+          <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase sm:col-span-6 lg:col-span-12">
+            Children (asked on PC-PNDT Form F)
+          </p>
+          <div className="sm:col-span-2 lg:col-span-2">
+            <Field
+              label="Living sons"
+              name="livingSons"
+              type="number"
+              min={0}
+              defaultValue={effectiveDefaults?.livingSons ?? undefined}
+            />
+          </div>
+          <div className="sm:col-span-4 lg:col-span-4">
+            <Field
+              label="Age of each son"
+              name="livingSonsAges"
+              placeholder="e.g. 6 years"
+              defaultValue={effectiveDefaults?.livingSonsAges ?? undefined}
+            />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-2">
+            <Field
+              label="Living daughters"
+              name="livingDaughters"
+              type="number"
+              min={0}
+              defaultValue={effectiveDefaults?.livingDaughters ?? undefined}
+            />
+          </div>
+          <div className="sm:col-span-4 lg:col-span-4">
+            <Field
+              label="Age of each daughter"
+              name="livingDaughtersAges"
+              placeholder="e.g. 4 years, 8 months"
+              defaultValue={effectiveDefaults?.livingDaughtersAges ?? undefined}
+            />
+          </div>
         </div>
       </div>
 
@@ -373,15 +374,6 @@ const GENDER_CHOICES: { value: PatientGender; label: string }[] = [
   { value: "MALE", label: "Male" },
   { value: "OTHER", label: "Other" },
 ];
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{title}</h2>
-      <div className="grid gap-x-4 gap-y-4 sm:grid-cols-6">{children}</div>
-    </section>
-  );
-}
 
 /** "45 years" for a DOB in the past; null for an empty or impossible date. */
 function ageFromDob(dob: string): string | null {

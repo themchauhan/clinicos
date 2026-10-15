@@ -63,10 +63,11 @@ export function NewVisitForm({
   return (
     <form
       action={formAction}
-      className="flex max-w-2xl flex-col gap-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+      className="flex max-w-5xl flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
     >
-      <Section title="Visit">
-        <div className="flex flex-col gap-1.5 sm:col-span-3">
+      {/* Three across on a desktop so the whole form is visible without scrolling. */}
+      <div className="grid gap-x-4 gap-y-4 sm:grid-cols-6 lg:grid-cols-12">
+        <div className="flex flex-col gap-1.5 sm:col-span-3 lg:col-span-4">
           <label htmlFor="visitTypeId" className="text-sm font-medium">
             Visit type
           </label>
@@ -87,7 +88,7 @@ export function NewVisitForm({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1.5 sm:col-span-3">
+        <div className="flex flex-col gap-1.5 sm:col-span-3 lg:col-span-4">
           <label htmlFor="doctorId" className="text-sm font-medium">
             Doctor
           </label>
@@ -101,7 +102,7 @@ export function NewVisitForm({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1.5 sm:col-span-3">
+        <div className="flex flex-col gap-1.5 sm:col-span-3 lg:col-span-4">
           <label htmlFor="feeAmount" className="text-sm font-medium">
             Fee amount (₹)
           </label>
@@ -122,27 +123,14 @@ export function NewVisitForm({
           />
         </div>
 
-        {asksLmp ? (
-          <div className="flex flex-col gap-1.5 sm:col-span-3">
-            <label htmlFor="lmpDate" className="text-sm font-medium">
-              Last menstrual period (LMP)
-            </label>
-            <input id="lmpDate" name="lmpDate" type="date" className={INPUT_CLASS} />
-            <p className="text-xs text-slate-500">
-              Optional. Gives the weeks of pregnancy on forms.
-            </p>
-          </div>
-        ) : null}
-      </Section>
-
-      <Section title="Referral">
-        <div className="flex flex-col gap-1.5 sm:col-span-3">
+        <div className="flex flex-col gap-1.5 sm:col-span-3 lg:col-span-4">
           <label htmlFor="referredByName" className="text-sm font-medium">
             Referred by (doctor)
           </label>
           <input id="referredByName" name="referredByName" type="text" className={INPUT_CLASS} />
         </div>
-        <div className="flex flex-col gap-1.5 sm:col-span-3">
+
+        <div className="flex flex-col gap-1.5 sm:col-span-3 lg:col-span-4">
           <label htmlFor="referredByHospital" className="text-sm font-medium">
             Referring hospital/clinic
           </label>
@@ -153,22 +141,32 @@ export function NewVisitForm({
             className={INPUT_CLASS}
           />
         </div>
-      </Section>
 
-      <Section title="Follow-up & notes">
-        <div className="flex flex-col gap-1.5 sm:col-span-3">
+        {asksLmp ? (
+          <div className="flex flex-col gap-1.5 sm:col-span-3 lg:col-span-4">
+            <label htmlFor="lmpDate" className="text-sm font-medium">
+              Last menstrual period (LMP)
+            </label>
+            <input id="lmpDate" name="lmpDate" type="date" className={INPUT_CLASS} />
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-1.5 sm:col-span-3 lg:col-span-4">
           <label htmlFor="followUpDate" className="text-sm font-medium">
             Follow-up date
           </label>
           <input id="followUpDate" name="followUpDate" type="date" className={INPUT_CLASS} />
         </div>
-        <div className="flex flex-col gap-1.5 sm:col-span-6">
+
+        <div
+          className={`flex flex-col gap-1.5 sm:col-span-6 ${asksLmp ? "lg:col-span-8" : "lg:col-span-12"}`}
+        >
           <label htmlFor="notes" className="text-sm font-medium">
             Notes
           </label>
           <textarea id="notes" name="notes" rows={2} className={INPUT_CLASS} />
         </div>
-      </Section>
+      </div>
 
       {state.error ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
@@ -185,12 +183,3 @@ export function NewVisitForm({
 
 const INPUT_CLASS =
   "rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 user-invalid:border-red-400";
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{title}</h2>
-      <div className="grid gap-x-4 gap-y-4 sm:grid-cols-6">{children}</div>
-    </section>
-  );
-}
