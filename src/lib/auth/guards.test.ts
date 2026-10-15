@@ -16,6 +16,7 @@ function makeProfile(overrides: Partial<SessionProfile> = {}): SessionProfile {
       status: "ACTIVE",
       trialEndsAt: new Date().toISOString(),
       subscriptionEndsAt: null,
+      offlineSyncEnabled: false,
     },
     enabledModules: ["GENERAL_OPD"],
     ...overrides,
@@ -64,6 +65,7 @@ describe("requireActiveTenant", () => {
         status: "TRIAL",
         trialEndsAt: new Date().toISOString(),
         subscriptionEndsAt: null,
+        offlineSyncEnabled: false,
       },
     });
     expect(requireActiveTenant(profile)).toBe(profile);
@@ -77,6 +79,7 @@ describe("requireActiveTenant", () => {
         status: "SUSPENDED",
         trialEndsAt: new Date().toISOString(),
         subscriptionEndsAt: null,
+        offlineSyncEnabled: false,
       },
     });
     expect(() => requireActiveTenant(profile)).toThrow(AuthError);
@@ -90,6 +93,7 @@ describe("requireActiveTenant", () => {
         status: "EXPIRED",
         trialEndsAt: new Date().toISOString(),
         subscriptionEndsAt: null,
+        offlineSyncEnabled: false,
       },
     });
     expect(() => requireActiveTenant(profile)).toThrow(AuthError);

@@ -19,6 +19,8 @@ export interface SessionProfile {
     status: HospitalStatus;
     trialEndsAt: string;
     subscriptionEndsAt: string | null;
+    /** Offline mode is switched on for this centre (the platform admin's switch). */
+    offlineSyncEnabled: boolean;
   } | null;
   /** Modules enabled for the hospital (empty for a platform admin). */
   enabledModules: ModuleType[];
@@ -59,7 +61,7 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile | null> 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "id, hospital_id, name, email, role, status, hospitals(id, name, status, trial_ends_at, subscription_ends_at, hospital_modules(module))",
+      "id, hospital_id, name, email, role, status, hospitals(id, name, status, trial_ends_at, subscription_ends_at, offline_sync_enabled, hospital_modules(module))",
     )
     .eq("id", userId)
     .single();
@@ -93,6 +95,7 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile | null> 
         status: hospitalRow.status,
         trialEndsAt: hospitalRow.trial_ends_at,
         subscriptionEndsAt: hospitalRow.subscription_ends_at,
+        offlineSyncEnabled: hospitalRow.offline_sync_enabled,
       }
     : null;
 

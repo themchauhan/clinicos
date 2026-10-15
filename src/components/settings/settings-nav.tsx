@@ -9,6 +9,7 @@ const SETTINGS_LINKS = [
   { href: "/dashboard/settings/doctors", label: "Doctors" },
   { href: "/dashboard/settings/document-types", label: "Document types" },
   { href: "/dashboard/settings/forms", label: "Forms" },
+  { href: "/dashboard/settings/offline", label: "Offline" },
 ] as const;
 
 /** Overview only reads as active on the settings root itself -- every

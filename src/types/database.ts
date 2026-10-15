@@ -59,6 +59,7 @@ export interface Database {
           plan: string;
           patient_id_prefix: string;
           patient_id_prefix_locked: boolean;
+          offline_sync_enabled: boolean;
           trial_ends_at: string;
           subscription_ends_at: string | null;
           created_at: string;
@@ -659,6 +660,33 @@ export interface Database {
           },
         ];
       };
+      offline_operations: {
+        Row: {
+          hospital_id: string;
+          op_id: string;
+          seq: number;
+          op_type: "register_patient_and_visit" | "create_visit" | "unknown";
+          device_id: string | null;
+          schema_version: number;
+          client_created_at: string;
+          payload: Record<string, unknown>;
+          payload_hash: string;
+          status: "applied" | "needs_review" | "rejected";
+          error_code: string | null;
+          result: Record<string, unknown>;
+          patient_id: string | null;
+          visit_id: string | null;
+          resolves_op_id: string | null;
+          submitted_by: string;
+          created_at: string;
+          prev_hash: string;
+          row_hash: string;
+        };
+        // Append-only: written only by apply_offline_operation().
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       hospital_form_profile: {
         Row: {
           hospital_id: string;
@@ -825,6 +853,23 @@ export interface Database {
       search_patients: {
         Args: { p_query: string };
         Returns: Database["public"]["Tables"]["patients"]["Row"][];
+      };
+      health_ping: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      apply_offline_operation: {
+        Args: { p_op: Record<string, unknown> };
+        Returns: Record<string, unknown>;
+      };
+      verify_offline_ledger: {
+        Args: { p_window?: number };
+        Returns: {
+          ok: boolean;
+          checked: number;
+          first_bad_seq: number | null;
+          window: number;
+        };
       };
       possible_duplicate_patients: {
         Args: { p_name: string; p_mobile: string | null; p_dob: string | null };

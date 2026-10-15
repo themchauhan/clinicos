@@ -192,6 +192,38 @@ export async function updateHospitalPlan(
   return {};
 }
 
+/**
+ * The per-centre offline-mode switch: both the rollout flag and the emergency
+ * kill switch (turning it off pauses sync -- records queued on the centre's
+ * computers stay safely queued -- and removes the offline shell from those
+ * computers the next time they are online).
+ */
+export async function updateOfflineSync(
+  hospitalId: string,
+  enabled: boolean,
+): Promise<{ error?: string }> {
+  requireRole(await getSessionProfile(), ["SUPER_ADMIN"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("hospitals")
+    .update({ offline_sync_enabled: enabled })
+    .eq("id", hospitalId);
+  if (error) {
+    return { error: "Could not change offline mode for that centre." };
+  }
+
+  await logPlatformAdminAudit({
+    targetHospitalId: hospitalId,
+    action: enabled ? "hospital.offline_sync_enabled" : "hospital.offline_sync_disabled",
+    targetType: "hospital",
+    targetId: hospitalId,
+  });
+
+  revalidatePath(`/admin/hospitals/${hospitalId}`);
+  return {};
+}
+
 export interface RecordPaymentState {
   error?: string;
 }

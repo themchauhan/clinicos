@@ -4,6 +4,7 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { requireRole } from "@/lib/auth/guards";
 import { getMfaStatus } from "@/lib/auth/mfa";
 import { safeNextPath } from "@/lib/auth/safe-redirect";
+import { OfflineSync } from "@/components/offline/offline-sync";
 
 /**
  * Shared by every /dashboard/* route: tenant-role gate + MFA gate, so
@@ -36,5 +37,16 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
     redirect(`/mfa/verify?next=${encodeURIComponent(requestedPath)}`);
   }
 
-  return children;
+  return (
+    <>
+      {children}
+      {profile.hospitalId ? (
+        <OfflineSync
+          userId={profile.userId}
+          hospitalId={profile.hospitalId}
+          enabled={Boolean(profile.hospital?.offlineSyncEnabled)}
+        />
+      ) : null}
+    </>
+  );
 }

@@ -24,6 +24,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
+    "idb": "^8.0.4",
     "next": "16.3.5",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289",
@@ -47,6 +48,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "eslint-config-prettier": "^10.1.8",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
     "prettier": "^3.9.8",
     "prettier-plugin-tailwindcss": "^0.8.1",

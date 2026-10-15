@@ -503,6 +503,17 @@ Last financial year (Indian, 1 April to 31 March) or This calendar year.
   tick + `checklist_key` + `tick_marks`, and `form_templates.extra_stamps`.
   Apply them to the staging / production databases before deploying.
 
+## Offline mode
+
+Register a patient and visit with the internet down; the records sync afterwards
+without duplicating, overwriting or losing data: idempotent, atomic, create-only
+`apply_offline_operation`, end-to-end SHA-256 integrity, a tamper-evident hash-
+chained ledger, and a fault-injection test of the real sync engine. Off by
+default, enabled per centre by a platform admin. See
+[docs/offline.md](docs/offline.md) for how it works, its limits, the offline
+authorization policy, rollback, the manual outage test and the go-live checklist.
+Migration `…42`.
+
 ## Deployment notes
 
 - `NEXT_PUBLIC_APP_URL` must be set to the deployment's public origin

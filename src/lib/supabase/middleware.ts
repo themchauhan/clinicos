@@ -9,6 +9,13 @@ const PUBLIC_PATHS = [
   "/scan",
   "/device",
   "/auth/confirm",
+  // The offline shell is a static page with no patient data (the data lives in
+  // the browser's own store) and must open with no session and no database.
+  "/offline",
+  // Data-free endpoints the offline queue and its service worker use.
+  "/api/health",
+  "/sw.js",
+  "/manifest.webmanifest",
 ];
 
 function isPublicPath(pathname: string) {
@@ -72,6 +79,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
+    // A script calling an API needs a status code it can act on, not a
+    // redirect that ends in the login page's HTML.
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "auth" },
+        { status: 401, headers: { "cache-control": "no-store" } },
+      );
+    }
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);

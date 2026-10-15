@@ -4,6 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ModuleType, StaffRole } from "@/types/database";
+import { clearSession } from "@/lib/offline/session";
+
+/** Signing out also locks the offline screens: the saved session is forgotten
+ * (records waiting to sync stay on the computer, but are not shown to the next
+ * person until their owner signs in again). */
+function lockOfflineOnSignOut() {
+  void clearSession().catch(() => undefined);
+}
 
 const PRIMARY_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -255,7 +263,7 @@ export function NavShell({
                         {session.hospitalName ? ` · ${session.hospitalName}` : ""}
                       </p>
                     </div>
-                    <form action={onSignOut ?? (() => {})}>
+                    <form action={onSignOut ?? (() => {})} onSubmit={lockOfflineOnSignOut}>
                       <button
                         type="submit"
                         className="block w-full px-3 py-2 text-left text-sm text-slate-600 transition-colors hover:bg-teal-50 hover:text-teal-800"
@@ -359,7 +367,7 @@ export function NavShell({
                       </p>
                     </div>
                   </div>
-                  <form action={onSignOut ?? (() => {})}>
+                  <form action={onSignOut ?? (() => {})} onSubmit={lockOfflineOnSignOut}>
                     <button
                       type="submit"
                       className="shrink-0 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50"

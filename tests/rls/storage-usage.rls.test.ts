@@ -10,12 +10,21 @@ describe("storage_usage_by_hospital", () => {
     expect(error).toBeNull();
     const row = data?.find((r) => r.hospital_id === sunriseId);
 
-    const { data: docs } = await serviceRoleClient()
-      .from("documents")
-      .select("file_size")
-      .eq("hospital_id", sunriseId);
-    const expectedBytes = (docs ?? []).reduce((sum, d) => sum + Number(d.file_size), 0);
-    expect(Number(row?.files ?? 0)).toBe((docs ?? []).length);
+    // PostgREST returns at most 1000 rows per request, and a long-lived local
+    // database collects more documents than that: read every page.
+    const docs: { file_size: number }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data: page } = await serviceRoleClient()
+        .from("documents")
+        .select("file_size")
+        .eq("hospital_id", sunriseId)
+        .order("id")
+        .range(from, from + 999);
+      docs.push(...(page ?? []));
+      if ((page ?? []).length < 1000) break;
+    }
+    const expectedBytes = docs.reduce((sum, d) => sum + Number(d.file_size), 0);
+    expect(Number(row?.files ?? 0)).toBe(docs.length);
     expect(Number(row?.bytes ?? 0)).toBe(expectedBytes);
   });
 
