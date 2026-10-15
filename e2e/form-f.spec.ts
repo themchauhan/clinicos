@@ -6,6 +6,12 @@ import { cleanupTestPatients } from "./utils/cleanup-test-patients";
 const DEMO_PASSWORD = "demo-password-123!";
 const CLARITY_ADMIN_EMAIL = "admin@clarity.test";
 const FORM_F_PDF = path.join(__dirname, "fixtures", "form-f.pdf");
+// India date `days` from now, the same day boundary the app uses for a visit.
+function istDate(days: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(
+    new Date(Date.now() + days * 86_400_000),
+  );
+}
 const TEMPLATE_NAME = `E2E Form F ${Date.now()}`;
 
 function serviceRole() {
@@ -73,8 +79,7 @@ test("Form F: the ready-made layout saves, and the fill screen pre-fills childre
   await page.getByRole("link", { name: "New visit" }).click();
   await page.getByLabel("Visit type").selectOption({ label: "Pregnancy/Obstetric USG" });
   await page.getByLabel("Referred by (doctor)").fill("Dr Referrer Demo");
-  const today = new Date();
-  const lmp = new Date(today.getTime() - 70 * 86_400_000).toISOString().slice(0, 10);
+  const lmp = istDate(-70);
   await page.getByLabel("Last menstrual period (LMP)").fill(lmp);
   await page.getByRole("button", { name: "Create visit" }).click();
   await expect(page).toHaveURL(/\/dashboard\/visits\/[0-9a-f-]+$/);
@@ -83,7 +88,7 @@ test("Form F: the ready-made layout saves, and the fill screen pre-fills childre
   await expect(page.getByText("10 weeks of pregnancy")).toBeVisible();
 
   // An LMP in the future is refused.
-  const future = new Date(today.getTime() + 5 * 86_400_000).toISOString().slice(0, 10);
+  const future = istDate(5);
   await page.getByLabel("Last menstrual period", { exact: true }).fill(future);
   await page.getByRole("button", { name: "Save" }).first().click();
   await expect(page.getByRole("alert").first()).toBeVisible();
